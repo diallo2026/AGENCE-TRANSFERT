@@ -1,0 +1,1895 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#0c447c">
+<title>TransferGuinée — Gestion des Transferts</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --blue:#1a6bbf;--blue-d:#0c447c;--blue-l:#e6f1fb;
+  --green:#0a8f0a;--green-l:#eaf3de;
+  --red:#b22b2b;--red-l:#fcebeb;
+  --amber:#9a6200;--amber-l:#faeeda;
+  --gray:#5a5a57;--gray-l:#f1efe8;
+  --surface:#fff;--surface1:#f7f7f5;--surface2:#efefec;
+  --text:#0b0b0b;--text2:#52514e;--text3:#898781;
+  --border:rgba(11,11,11,.12);--border2:rgba(11,11,11,.2);
+  --radius:8px;--radius-lg:14px;
+  --sidebar:240px;
+  --transition:.18s ease;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --surface:#1c1c1a;--surface1:#232320;--surface2:#2a2a27;
+    --text:#f0f0ee;--text2:#b0afa8;--text3:#6a6a66;
+    --border:rgba(255,255,255,.1);--border2:rgba(255,255,255,.18);
+    --blue:#3b8ee8;--blue-d:#5aa3f0;--blue-l:#0d2a4a;
+    --green:#16b016;--green-l:#0a2a0a;
+    --red:#e05555;--red-l:#2a0a0a;
+    --amber:#d4a017;--amber-l:#2a1f00;
+    --gray:#a0a09a;--gray-l:#232320;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;font-size:15px;color:var(--text);background:var(--surface2)}
+input,select,textarea,button{font-family:inherit;font-size:inherit}
+
+/* ─── LAYOUT ─── */
+#app{display:flex;min-height:100vh;position:relative}
+.sidebar{width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:50;transition:transform var(--transition)}
+.main-content{flex:1;margin-left:var(--sidebar);min-width:0;display:flex;flex-direction:column}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main-content{margin-left:0}
+  .sidebar-overlay{display:block!important;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:49}
+}
+.sidebar-overlay{display:none}
+
+/* ─── SIDEBAR ─── */
+.sb-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-logo-icon{width:38px;height:38px;background:var(--blue);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-logo-icon i{font-size:20px;color:#fff}
+.sb-logo-text .name{font-size:14px;font-weight:600;color:var(--text)}
+.sb-logo-text .sub{font-size:10px;color:var(--text3)}
+.sb-nav{padding:10px 8px;flex:1;overflow-y:auto}
+.sb-section{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:10px 8px 4px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:var(--radius);cursor:pointer;color:var(--text2);font-size:13px;margin-bottom:2px;transition:background var(--transition),color var(--transition);border:none;background:none;width:100%;text-align:left}
+.sb-item:hover{background:var(--surface1);color:var(--text)}
+.sb-item.active{background:var(--blue-l);color:var(--blue-d);font-weight:500}
+.sb-item i{font-size:17px;flex-shrink:0}
+.sb-user{padding:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:9px}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--blue-l);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--blue-d);flex-shrink:0}
+.uname{font-size:12px;font-weight:500;line-height:1.2}
+.urole{font-size:10px;color:var(--text3)}
+.btn-logout{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text3);font-size:17px;display:flex;padding:4px;border-radius:6px;transition:color var(--transition)}
+.btn-logout:hover{color:var(--red)}
+
+/* ─── TOPBAR ─── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:30}
+.btn-menu{display:none;background:none;border:1px solid var(--border2);border-radius:var(--radius);padding:7px 8px;cursor:pointer;color:var(--text);font-size:18px}
+@media(max-width:768px){.btn-menu{display:flex;align-items:center}}
+.topbar-title{font-size:16px;font-weight:600;flex:1}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+
+/* ─── BUTTONS ─── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;transition:background var(--transition);white-space:nowrap}
+.btn:hover{background:var(--surface1)}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--blue);color:#fff;border-color:transparent}
+.btn-primary:hover{background:var(--blue-d)}
+.btn-success{background:var(--green);color:#fff;border-color:transparent}
+.btn-success:hover{filter:brightness(.9)}
+.btn-danger{background:var(--red);color:#fff;border-color:transparent}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-icon{padding:7px;border-radius:var(--radius)}
+
+/* ─── CONTENT ─── */
+.content{padding:20px;flex:1}
+@media(max-width:480px){.content{padding:14px}}
+.page{display:none}
+.page.active{display:block}
+
+/* ─── CARDS ─── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:16px}
+.card-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.card-header h3{font-size:14px;font-weight:600}
+.card-body{padding:16px}
+
+/* ─── KPI ─── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px}
+.kpi-label{font-size:11px;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.kpi-label i{font-size:14px}
+.kpi-value{font-size:22px;font-weight:700;line-height:1;letter-spacing:-.02em}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.kpi-blue .kpi-value{color:var(--blue)}
+.kpi-green .kpi-value{color:var(--green)}
+.kpi-amber .kpi-value{color:var(--amber)}
+.kpi-red .kpi-value{color:var(--red)}
+
+/* ─── FILTER BAR ─── */
+.filter-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px}
+.filter-bar label{font-size:12px;color:var(--text2);white-space:nowrap;font-weight:500}
+.filter-bar select,.filter-bar input[type=month],.filter-bar input[type=text],.filter-bar input[type=search]{padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface1);color:var(--text);font-size:13px;min-width:0}
+.filter-bar select:focus,.filter-bar input:focus{outline:none;border-color:var(--blue)}
+
+/* ─── TABLE ─── */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:600px}
+th{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface1);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface1)}
+
+/* ─── BADGES ─── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:100px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge-success{background:var(--green-l);color:var(--green)}
+.badge-warn{background:var(--amber-l);color:var(--amber)}
+.badge-danger{background:var(--red-l);color:var(--red)}
+.badge-info{background:var(--blue-l);color:var(--blue-d)}
+.badge-gray{background:var(--gray-l);color:var(--gray)}
+.dir-out{color:var(--red);font-size:12px;font-weight:500;display:flex;align-items:center;gap:3px}
+.dir-in{color:var(--green);font-size:12px;font-weight:500;display:flex;align-items:center;gap:3px}
+
+/* ─── FORMS ─── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.form-grid{grid-template-columns:1fr}}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg.full{grid-column:1/-1}
+.fg.span3{grid-column:1/-1}
+.fg label{font-size:12px;font-weight:600;color:var(--text2)}
+.fg label span.req{color:var(--red)}
+.fg input,.fg select,.fg textarea{padding:9px 12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface1);color:var(--text);font-size:13px;transition:border-color var(--transition);width:100%}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--blue);background:var(--surface)}
+.fg input[readonly]{background:var(--surface2);color:var(--text2);cursor:default}
+.fg textarea{resize:vertical;min-height:60px}
+.fg .hint{font-size:11px;color:var(--text3)}
+.fee-recap{background:var(--surface1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;font-size:13px}
+.fee-recap-header{background:var(--blue);color:#fff;padding:8px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:6px}
+.fee-recap-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border)}
+.fee-recap-row:last-child{border-bottom:none}
+.fee-recap-row.highlight{background:var(--blue-l)}
+.fee-recap-row.total{background:var(--blue);color:#fff;padding:11px 14px}
+.fee-recap-row.total .fr-label{font-size:13px;font-weight:700;color:#fff}
+.fee-recap-row.total .fr-value{font-size:16px;font-weight:800;color:#fff}
+.fee-recap-row.net{background:var(--green-l)}
+.fee-recap-row.net .fr-label{color:var(--green);font-weight:600}
+.fee-recap-row.net .fr-value{color:var(--green);font-weight:700;font-size:14px}
+.fr-label{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px}
+.fr-label i{font-size:14px}
+.fr-value{font-size:13px;font-weight:600;color:var(--text);text-align:right}
+.fr-value.muted{color:var(--text3);font-weight:400}
+.fr-value.red{color:var(--red)}
+.fee-devise-badge{display:inline-flex;align-items:center;gap:4px;background:var(--green-l);color:var(--green);padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600}
+.fee-pct-badge{display:inline-flex;align-items:center;background:var(--amber-l);color:var(--amber);padding:1px 7px;border-radius:100px;font-size:11px;font-weight:700;margin-left:4px}
+.fee-recap-divider{height:1px;background:var(--border2);margin:2px 14px}
+.fee-recap-row.fee-row{background:var(--red-l)}
+.fr-value.blue{color:var(--blue);font-weight:700}
+
+/* ─── MODAL ─── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius-lg);width:100%;max-width:560px;overflow:hidden;margin:auto}
+.modal-header{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h2{font-size:15px;font-weight:600}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3);line-height:1;padding:0 4px;transition:color var(--transition)}
+.modal-close:hover{color:var(--red)}
+.modal-body{padding:18px}
+.modal-footer{padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+
+/* ─── CHARTS ─── */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+@media(max-width:640px){.charts-grid{grid-template-columns:1fr}}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px}
+.chart-card.full{grid-column:1/-1}
+.chart-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.chart-wrap{position:relative;width:100%}
+
+/* ─── COUNTRIES GRID ─── */
+.countries-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:16px}
+.country-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;display:flex;gap:12px;align-items:flex-start;transition:border-color var(--transition)}
+.country-card:hover{border-color:var(--blue)}
+.country-flag{font-size:30px;line-height:1;flex-shrink:0}
+.country-info .cname{font-size:14px;font-weight:600}
+.country-info .ccur{font-size:12px;color:var(--text3);margin-top:2px}
+.country-info .cstats{font-size:11px;color:var(--text2);margin-top:5px}
+.country-info .cfee{display:inline-flex;align-items:center;gap:3px;background:var(--amber-l);color:var(--amber);padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600;margin-top:4px}
+
+/* ─── REPORT ─── */
+.report-filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.report-filters .fg{min-width:130px;flex:1}
+.report-filters select,.report-filters input{padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface1);color:var(--text);font-size:13px;width:100%}
+.report-preview{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px}
+.rpt-header{border-bottom:3px solid var(--blue);padding-bottom:14px;margin-bottom:16px}
+.rpt-agency{font-size:19px;font-weight:700;color:var(--blue)}
+.rpt-sub{font-size:12px;color:var(--text2);margin-top:3px}
+.rpt-type{font-size:15px;font-weight:600;color:var(--blue-d);margin-top:8px}
+.rpt-meta{display:flex;flex-wrap:wrap;gap:16px;margin-top:8px;font-size:12px;color:var(--text3)}
+.rpt-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.rpt-total{background:var(--surface1);border-radius:var(--radius);padding:10px 12px;text-align:center}
+.rpt-total .lbl{font-size:10px;color:var(--text3);margin-bottom:3px;font-weight:600;text-transform:uppercase}
+.rpt-total .val{font-size:14px;font-weight:700}
+.rpt-total.blue .val{color:var(--blue)}
+.rpt-total.green .val{color:var(--green)}
+.rpt-total.amber .val{color:var(--amber)}
+.rpt-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+.rpt-table th{background:var(--blue);color:#fff;padding:7px 9px;text-align:left;font-size:11px;white-space:nowrap}
+.rpt-table td{padding:6px 9px;border-bottom:1px solid var(--border);font-size:11px}
+.rpt-table tr:nth-child(even) td{background:var(--surface1)}
+
+/* ─── LOGIN ─── */
+#login-screen{position:fixed;inset:0;background:var(--surface2);display:flex;align-items:stretch;z-index:999;overflow:auto}
+.login-left{width:42%;background:var(--blue-d);display:flex;flex-direction:column;justify-content:space-between;padding:44px 40px;flex-shrink:0}
+@media(max-width:700px){.login-left{display:none}}
+.ll-brand{display:flex;align-items:center;gap:12px}
+.ll-brand-icon{width:46px;height:46px;background:rgba(255,255,255,.15);border-radius:12px;display:flex;align-items:center;justify-content:center}
+.ll-brand-icon i{font-size:24px;color:#fff}
+.ll-brand-name{color:#fff;font-size:18px;font-weight:600}
+.ll-brand-sub{color:rgba(255,255,255,.6);font-size:11px;margin-top:2px}
+.ll-hero{color:#fff}
+.ll-hero h1{font-size:24px;font-weight:700;line-height:1.35;margin-bottom:12px}
+.ll-hero p{font-size:13px;opacity:.72;line-height:1.65}
+.ll-corridors{display:flex;flex-direction:column;gap:7px}
+.ll-corridor{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.1);border-radius:var(--radius);padding:9px 12px;color:#fff;font-size:13px}
+.ll-corridor i{font-size:15px;opacity:.7}
+.ll-footer-txt{font-size:11px;color:rgba(255,255,255,.4)}
+.login-right{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 28px;background:var(--surface)}
+.login-box{width:100%;max-width:360px}
+.login-box h2{font-size:22px;font-weight:700;margin-bottom:4px}
+.login-subtitle{font-size:13px;color:var(--text3);margin-bottom:28px}
+.login-form .fg{margin-bottom:14px}
+.pw-wrap{position:relative}
+.pw-wrap input{width:100%;padding-right:40px}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;display:flex;align-items:center;padding:0;transition:color var(--transition)}
+.pw-toggle:hover{color:var(--text)}
+.btn-login{width:100%;padding:11px;border-radius:var(--radius);border:none;background:var(--blue);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:background var(--transition);display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px}
+.btn-login:hover{background:var(--blue-d)}
+.btn-login:active{transform:scale(.99)}
+.login-error{display:none;background:var(--red-l);color:var(--red);border:1px solid var(--red);border-radius:var(--radius);padding:9px 12px;font-size:13px;margin-bottom:14px;display:none;align-items:center;gap:7px}
+.login-error.show{display:flex}
+.demo-accounts{margin-top:22px;padding-top:16px;border-top:1px solid var(--border)}
+.demo-label{font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:500}
+.demo-chips{display:flex;flex-wrap:wrap;gap:6px}
+.demo-chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface1);border:1px solid var(--border2);border-radius:100px;padding:4px 12px;font-size:12px;cursor:pointer;color:var(--text2);transition:all var(--transition)}
+.demo-chip:hover{background:var(--blue-l);color:var(--blue-d);border-color:var(--blue)}
+.login-legal{font-size:11px;color:var(--text3);text-align:center;margin-top:22px}
+
+/* ─── SETTINGS ─── */
+.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:14px;max-width:520px}
+.settings-card h3{font-size:14px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+
+/* ─── MISC ─── */
+.tag{display:inline-flex;align-items:center;gap:5px;background:var(--blue-l);color:var(--blue-d);padding:4px 12px;border-radius:100px;font-size:12px;font-weight:500}
+.empty{padding:32px;text-align:center;color:var(--text3);font-size:13px}
+.divider{height:1px;background:var(--border);margin:14px 0}
+.text-right{text-align:right}
+.text-muted{color:var(--text3)}
+.fw600{font-weight:600}
+.currency-detected{display:inline-flex;align-items:center;gap:5px;background:var(--green-l);color:var(--green);border-radius:var(--radius);padding:3px 9px;font-size:12px;font-weight:500}
+
+/* ─── FEE RECAP BOX ─── */
+.fee-recap{background:var(--surface1);border:1.5px solid var(--blue);border-radius:var(--radius-lg);overflow:hidden;margin-top:4px}
+.fee-recap-header{background:var(--blue-d);color:#fff;padding:9px 14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:7px;letter-spacing:.01em}
+.fee-recap-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;gap:12px;border-bottom:1px solid var(--border)}
+.fee-recap-row:last-child{border-bottom:none}
+.fee-recap-row.highlight{background:var(--blue-l)}
+.fee-recap-row.fee-row{background:var(--red-l)}
+.fee-recap-row.net{background:var(--green-l)}
+.fee-recap-row.total{background:var(--blue-d);border-bottom:none}
+.fee-recap-row.total .fr-label{color:#fff;font-weight:700;font-size:13px}
+.fee-recap-row.total .fr-value{color:#fff;font-weight:700;font-size:15px}
+.fee-recap-divider{height:1px;background:var(--border2);margin:0 14px}
+.fr-label{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;flex-shrink:0}
+.fr-label i{font-size:14px;color:var(--text3)}
+.fr-value{font-size:13px;font-weight:600;color:var(--text);text-align:right;word-break:break-all}
+.fr-value.red{color:var(--red)}
+.fr-value.blue{color:var(--blue)}
+.fr-value.green{color:var(--green)}
+.fr-value.muted{color:var(--text3);font-weight:400;font-size:12px}
+.fee-devise-badge{display:inline-flex;align-items:center;gap:5px;background:var(--blue-l);color:var(--blue-d);border-radius:100px;padding:3px 10px;font-size:12px;font-weight:600;border:1px solid var(--blue)}
+.fee-devise-badge i{color:var(--green);font-size:13px}
+.fee-pct-badge{display:inline-flex;align-items:center;background:var(--red-l);color:var(--red);border-radius:100px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:4px;border:1px solid var(--red)}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ LOGIN ═══════════ -->
+<div id="login-screen">
+  <div class="login-left">
+    <div class="ll-brand">
+      <div class="ll-brand-icon"><i class="ti ti-arrows-exchange"></i></div>
+      <div>
+        <div class="ll-brand-name">TransferGuinée</div>
+        <div class="ll-brand-sub">Système de gestion des transferts</div>
+      </div>
+    </div>
+    <div class="ll-hero">
+      <h1>Gérez vos transferts d'argent en toute sécurité</h1>
+      <p>Plateforme dédiée aux agences de transfert sur les corridors Guinée — Afrique de l'Ouest et au-delà.</p>
+    </div>
+    <div class="ll-corridors">
+      <div class="ll-corridor"><i class="ti ti-arrow-right"></i>Guinée ↔ Mauritanie (GNF / MRU)</div>
+      <div class="ll-corridor"><i class="ti ti-arrow-right"></i>Guinée ↔ Sierra Leone (GNF / SLL)</div>
+      <div class="ll-corridor"><i class="ti ti-arrow-right"></i>Guinée ↔ Côte d'Ivoire (GNF / XOF)</div>
+      <div class="ll-corridor"><i class="ti ti-plus"></i>Autres pays extensibles à l'infini</div>
+    </div>
+    <div class="ll-footer-txt">TransferGuinée · Licence BCRG-2024-001 · Version 3.0</div>
+  </div>
+  <div class="login-right">
+    <div class="login-box">
+      <h2>Connexion</h2>
+      <p class="login-subtitle">Accédez à votre espace de gestion</p>
+      <div class="login-error" id="login-error"><i class="ti ti-alert-circle"></i><span>Identifiants incorrects. Réessayez.</span></div>
+      <div class="login-form">
+        <div class="fg"><label>Identifiant</label><input type="text" id="li-user" placeholder="ex : admin" autocomplete="username"></div>
+        <div class="fg">
+          <label>Mot de passe</label>
+          <div class="pw-wrap">
+            <input type="password" id="li-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+            <button class="pw-toggle" onclick="togglePw()" aria-label="Afficher/masquer"><i class="ti ti-eye" id="pw-eye"></i></button>
+          </div>
+        </div>
+        <button class="btn-login" onclick="doLogin()"><i class="ti ti-login"></i>Se connecter</button>
+      </div>
+      <div class="demo-accounts">
+        <div class="demo-label">Comptes de démonstration — cliquez pour remplir :</div>
+        <div class="demo-chips">
+          <span class="demo-chip" onclick="fillCreds('admin','admin123')"><i class="ti ti-shield-check"></i>admin</span>
+          <span class="demo-chip" onclick="fillCreds('caissier','caisse1')"><i class="ti ti-user"></i>caissier</span>
+          <span class="demo-chip" onclick="fillCreds('superviseur','super2024')"><i class="ti ti-eye"></i>superviseur</span>
+          <span class="demo-chip" onclick="fillCreds('directeur','dir2024')"><i class="ti ti-crown"></i>directeur</span>
+        </div>
+      </div>
+      <div class="login-legal">TransferGuinée SARL · Conakry, Guinée · BCRG-2024-001</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ APP ═══════════ -->
+<div id="app" style="display:none">
+  <div class="sidebar-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon"><i class="ti ti-arrows-exchange"></i></div>
+      <div class="sb-logo-text">
+        <div class="name">TransferGuinée</div>
+        <div class="sub">Gestion des transferts</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-section">Principal</div>
+      <button class="sb-item active" onclick="navigate('dashboard')"><i class="ti ti-layout-dashboard"></i>Tableau de bord</button>
+      <button class="sb-item" onclick="navigate('transfers')"><i class="ti ti-arrows-exchange"></i>Transferts</button>
+      <button class="sb-item" onclick="navigate('countries')"><i class="ti ti-world"></i>Pays et corridors</button>
+      <div class="sb-section">Rapports</div>
+      <button class="sb-item" onclick="navigate('reports')"><i class="ti ti-file-analytics"></i>Rapports PDF</button>
+      <div class="sb-section">Administration</div>
+      <button class="sb-item" onclick="navigate('settings')"><i class="ti ti-settings"></i>Paramètres</button>
+    </nav>
+    <div class="sb-user">
+      <div class="avatar" id="sb-avatar">AD</div>
+      <div>
+        <div class="uname" id="sb-uname">Admin</div>
+        <div class="urole" id="sb-role">Administrateur</div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()" title="Se déconnecter"><i class="ti ti-logout"></i></button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <button class="btn-menu" onclick="openSidebar()" aria-label="Menu"><i class="ti ti-menu-2"></i></button>
+      <span class="topbar-title" id="topbar-title">Tableau de bord</span>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" id="topbar-action-btn" onclick="openNewTransfer()"><i class="ti ti-plus"></i><span class="hide-xs">Nouveau transfert</span></button>
+      </div>
+    </div>
+
+    <!-- ─── DASHBOARD ─── -->
+    <div id="page-dashboard" class="page active">
+      <div class="content">
+        <div class="filter-bar">
+          <label><i class="ti ti-calendar"></i> Mois :</label>
+          <input type="month" id="dash-month" onchange="renderDashboard()">
+          <label>Pays :</label>
+          <select id="dash-country" onchange="renderDashboard()"><option value="all">Tous les pays</option></select>
+          <button class="btn btn-sm" onclick="resetDash()"><i class="ti ti-refresh"></i>Réinitialiser</button>
+        </div>
+        <div id="dash-tag" style="margin-bottom:12px"></div>
+        <div class="kpi-grid" id="kpi-grid"></div>
+        <div class="charts-grid">
+          <div class="chart-card"><div class="chart-title"><i class="ti ti-chart-bar"></i>Volume par pays (GNF)</div><div class="chart-wrap" style="height:200px"><canvas id="chart-cty" role="img" aria-label="Volume par pays"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title"><i class="ti ti-arrows-split-2"></i>Envois vs réceptions</div><div class="chart-wrap" style="height:200px"><canvas id="chart-dir" role="img" aria-label="Envois vs réceptions"></canvas></div></div>
+          <div class="chart-card full"><div class="chart-title"><i class="ti ti-timeline"></i>Évolution journalière du volume (GNF)</div><div class="chart-wrap" style="height:160px"><canvas id="chart-daily" role="img" aria-label="Évolution journalière"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Derniers transferts du mois</h3><span id="dash-count" class="text-muted" style="font-size:12px"></span></div>
+          <div class="table-wrap" id="dash-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── TRANSFERS ─── -->
+    <div id="page-transfers" class="page">
+      <div class="content">
+        <div class="filter-bar">
+          <input type="search" id="t-srch" placeholder="Référence, nom..." style="width:180px" oninput="renderTransfersTable()">
+          <select id="t-fc" onchange="renderTransfersTable()"><option value="all">Tous pays</option></select>
+          <select id="t-fd" onchange="renderTransfersTable()"><option value="all">Direction</option><option value="envoi">Envoi (GN→)</option><option value="reception">Réception (→GN)</option></select>
+          <select id="t-fs" onchange="renderTransfersTable()"><option value="all">Statut</option><option value="complété">Complété</option><option value="en attente">En attente</option><option value="annulé">Annulé</option></select>
+          <input type="month" id="t-fm" onchange="renderTransfersTable()">
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Liste des transferts</h3><span id="t-count" class="text-muted" style="font-size:12px"></span></div>
+          <div class="table-wrap" id="transfers-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── COUNTRIES ─── -->
+    <div id="page-countries" class="page">
+      <div class="content">
+        <div class="countries-grid" id="countries-grid"></div>
+        <div class="card">
+          <div class="card-header"><h3>Taux de change et frais par corridor</h3></div>
+          <div class="table-wrap" id="rates-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── REPORTS ─── -->
+    <div id="page-reports" class="page">
+      <div class="content">
+        <div class="report-filters">
+          <div class="fg"><label>Type de rapport</label>
+            <select id="r-type" onchange="updateRptCtrls();renderReport()">
+              <option value="journalier">Journalier</option>
+              <option value="hebdomadaire">Hebdomadaire</option>
+              <option value="mensuel" selected>Mensuel</option>
+              <option value="annuel">Annuel</option>
+            </select>
+          </div>
+          <div class="fg"><label>Pays</label><select id="r-cty" onchange="renderReport()"><option value="all">Tous</option></select></div>
+          <div class="fg"><label>Direction</label><select id="r-dir" onchange="renderReport()"><option value="all">Tous</option><option value="envoi">Envoi</option><option value="reception">Réception</option></select></div>
+          <div class="fg" id="rg-m"><label>Mois</label><input type="month" id="r-month" onchange="renderReport()"></div>
+          <div class="fg" id="rg-d" style="display:none"><label>Date</label><input type="date" id="r-day" onchange="renderReport()"></div>
+          <div class="fg" id="rg-w" style="display:none"><label>Semaine</label><input type="week" id="r-week" onchange="renderReport()"></div>
+          <div class="fg" id="rg-y" style="display:none"><label>Année</label><select id="r-year" onchange="renderReport()"></select></div>
+        </div>
+        <div class="report-preview" id="rpt-preview"><div class="empty"><i class="ti ti-file-analytics" style="font-size:32px;display:block;margin-bottom:8px"></i>Configurez les filtres pour afficher le rapport.</div></div>
+      </div>
+    </div>
+
+    <!-- ─── SETTINGS ─── -->
+    <div id="page-settings" class="page">
+      <div class="content">
+
+        <!-- LOGO + IDENTITE VISUELLE -->
+        <div class="settings-card">
+          <h3><i class="ti ti-photo"></i> Logo de l'agence</h3>
+          <div style="display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
+            <div id="logo-preview-wrap" style="width:120px;height:120px;border:2px dashed var(--border2);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;background:var(--surface1)">
+              <img id="logo-preview-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:contain">
+              <div id="logo-placeholder" style="text-align:center;color:var(--text3);font-size:12px;padding:8px">
+                <i class="ti ti-photo-up" style="font-size:28px;display:block;margin-bottom:6px"></i>Aucun logo
+              </div>
+            </div>
+            <div style="flex:1;min-width:200px">
+              <div class="fg" style="margin-bottom:12px">
+                <label>Importer un logo (PNG, JPG, SVG)</label>
+                <input type="file" id="logo-file" accept="image/*" onchange="loadLogo(this)" style="padding:6px 10px">
+                <div class="hint">Le logo apparaîtra dans tous les rapports PDF et sur l'en-tête.</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" onclick="document.getElementById('logo-file').click()"><i class="ti ti-upload"></i>Choisir un fichier</button>
+                <button class="btn btn-sm" onclick="removeLogo()"><i class="ti ti-trash"></i>Supprimer le logo</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INFORMATIONS AGENCE -->
+        <div class="settings-card">
+          <h3><i class="ti ti-building"></i> Informations de l'agence</h3>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr">
+            <div class="fg"><label>Nom de l'agence <span class="req">*</span></label><input type="text" id="ag-name" value="TransferGuinée SARL" oninput="previewAgencyName()"></div>
+            <div class="fg"><label>Numéro de licence BCRG</label><input type="text" id="ag-lic" value="BCRG-2024-001"></div>
+            <div class="fg"><label>Slogan / Description</label><input type="text" id="ag-slogan" value="Votre partenaire de confiance" placeholder="Slogan affiché dans les rapports"></div>
+            <div class="fg"><label>Pays d'enregistrement</label><input type="text" id="ag-country" value="Guinée Conakry"></div>
+            <div class="fg full"><label>Adresse complète</label><input type="text" id="ag-addr" value="Quartier Ratoma, Conakry, Guinée"></div>
+            <div class="fg"><label>Téléphone principal</label><input type="text" id="ag-phone" value="+224 620 000 000"></div>
+            <div class="fg"><label>Téléphone secondaire</label><input type="text" id="ag-phone2" value="" placeholder="+224 660 000 000"></div>
+            <div class="fg"><label>Email</label><input type="text" id="ag-email" value="contact@transferguinee.gn"></div>
+            <div class="fg"><label>Site web</label><input type="text" id="ag-web" value="" placeholder="www.transferguinee.gn"></div>
+            <div class="fg"><label>Capitale / Ville</label><input type="text" id="ag-city" value="Conakry"></div>
+            <div class="fg"><label>Code postal / BP</label><input type="text" id="ag-bp" value="" placeholder="BP 1234"></div>
+            <div class="fg full"><label>Pied de page des rapports</label><input type="text" id="ag-footer" value="Document confidentiel — TransferGuinée SARL — Tous droits réservés" placeholder="Texte affiché en bas de chaque page PDF"></div>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="saveSettings()"><i class="ti ti-device-floppy"></i>Enregistrer les informations</button>
+            <button class="btn" onclick="previewAgencyCard()"><i class="ti ti-eye"></i>Aperçu dans le rapport</button>
+          </div>
+        </div>
+
+        <!-- APERCU ENTETE RAPPORT -->
+        <div class="settings-card" id="agency-preview-card" style="display:none">
+          <h3><i class="ti ti-file-analytics"></i> Aperçu de l'en-tête rapport</h3>
+          <div id="agency-preview-content"></div>
+        </div>
+
+        <!-- COMPTES UTILISATEURS -->
+        <div class="settings-card" style="max-width:100%">
+          <h3><i class="ti ti-users"></i> Comptes utilisateurs</h3>
+          <div id="users-list"></div>
+          <div style="margin-top:14px">
+            <button class="btn btn-primary" onclick="openAddUser()"><i class="ti ti-user-plus"></i>Ajouter un utilisateur</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+</div><!-- /app -->
+
+<!-- ═══════════ MODAL UTILISATEUR ═══════════ -->
+<div class="modal-overlay" id="modal-user">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h2 id="mu-title">Modifier l'utilisateur</h2>
+      <button class="modal-close" onclick="closeModal('modal-user')">×</button>
+    </div>
+    <div class="modal-body">
+      <!-- Photo -->
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        <div style="position:relative;flex-shrink:0">
+          <div id="mu-photo-wrap" style="width:80px;height:80px;border-radius:50%;background:var(--blue-l);display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid var(--blue)">
+            <img id="mu-photo-img" src="" style="display:none;width:100%;height:100%;object-fit:cover">
+            <span id="mu-photo-initials" style="font-size:22px;font-weight:700;color:var(--blue-d)">??</span>
+          </div>
+          <button onclick="document.getElementById('mu-photo-file').click()" style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--blue);border:2px solid var(--surface);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px" title="Changer la photo"><i class="ti ti-camera"></i></button>
+          <input type="file" id="mu-photo-file" accept="image/*" onchange="loadUserPhoto(this)" style="display:none">
+        </div>
+        <div style="flex:1">
+          <div id="mu-display-name" style="font-size:16px;font-weight:600;margin-bottom:3px"></div>
+          <div id="mu-display-role" style="font-size:12px;color:var(--text3);margin-bottom:8px"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="document.getElementById('mu-photo-file').click()"><i class="ti ti-upload"></i>Changer la photo</button>
+            <button class="btn btn-sm" onclick="removeUserPhoto()" style="color:var(--red)"><i class="ti ti-trash"></i>Supprimer</button>
+          </div>
+        </div>
+      </div>
+      <!-- Champs -->
+      <div class="form-grid">
+        <input type="hidden" id="mu-username">
+        <div class="fg"><label>Nom complet <span class="req">*</span></label><input type="text" id="mu-name" placeholder="Nom Prénom" oninput="updateUserPreview()"></div>
+        <div class="fg"><label>Rôle <span class="req">*</span></label>
+          <select id="mu-role" onchange="updateUserPreview()">
+            <option value="Administrateur">Administrateur</option>
+            <option value="Directeur">Directeur</option>
+            <option value="Superviseur">Superviseur</option>
+            <option value="Caissier">Caissier</option>
+            <option value="Comptable">Comptable</option>
+            <option value="Agent">Agent</option>
+          </select>
+        </div>
+        <div class="fg"><label>Email</label><input type="email" id="mu-email" placeholder="email@agence.gn"></div>
+        <div class="fg"><label>Téléphone</label><input type="text" id="mu-phone" placeholder="+224 620..."></div>
+        <div class="fg full"><label>Accès <span class="req">*</span></label>
+          <select id="mu-access">
+            <option value="all">Accès complet (toutes fonctions)</option>
+            <option value="transfers">Transferts uniquement</option>
+            <option value="view">Lecture seule</option>
+            <option value="reports">Rapports uniquement</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1;padding:10px 0 4px;border-top:1px solid var(--border);margin-top:4px">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px"><i class="ti ti-lock"></i> Sécurité du compte</div>
+        </div>
+        <div class="fg"><label>Identifiant (login)</label><input type="text" id="mu-login" placeholder="ex: admin" style="background:var(--surface2)" readonly></div>
+        <div class="fg"><label>Nouveau mot de passe</label>
+          <div style="position:relative">
+            <input type="password" id="mu-pass" placeholder="Laisser vide pour ne pas changer" style="width:100%;padding-right:36px">
+            <button type="button" onclick="toggleMuPw()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px"><i class="ti ti-eye" id="mu-eye"></i></button>
+          </div>
+        </div>
+        <div class="fg"><label>Confirmer le mot de passe</label><input type="password" id="mu-pass2" placeholder="Confirmer"></div>
+        <div class="fg" id="mu-pass-error" style="display:none"><div style="background:var(--red-l);color:var(--red);border-radius:var(--radius);padding:7px 10px;font-size:12px"><i class="ti ti-alert-circle"></i> Les mots de passe ne correspondent pas.</div></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="mu-delete-btn" onclick="deleteUser()"><i class="ti ti-trash"></i>Supprimer</button>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeModal('modal-user')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveUser()"><i class="ti ti-device-floppy"></i>Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL TRANSFERT ═══════════ -->
+<div class="modal-overlay" id="modal-transfer">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="mt-title">Nouveau transfert</h2>
+      <button class="modal-close" onclick="closeModal('modal-transfer')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="fg">
+          <label>Direction <span class="req">*</span></label>
+          <select id="t-dir" onchange="updateDirectionHints()">
+            <option value="envoi">Envoi — Guinée → Pays</option>
+            <option value="reception">Réception — Pays → Guinée</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Pays partenaire <span class="req">*</span></label>
+          <select id="t-cty" onchange="onCountryChange()"></select>
+        </div>
+        <div class="fg">
+          <label id="lbl-sender">Expéditeur (Guinée) <span class="req">*</span></label>
+          <input type="text" id="t-snd" placeholder="Nom complet">
+        </div>
+        <div class="fg">
+          <label>Téléphone expéditeur</label>
+          <input type="text" id="t-sndp" placeholder="+224 620...">
+        </div>
+        <div class="fg">
+          <label id="lbl-recv">Bénéficiaire <span class="req">*</span></label>
+          <input type="text" id="t-rcv" placeholder="Nom complet">
+        </div>
+        <div class="fg">
+          <label>Téléphone bénéficiaire</label>
+          <input type="text" id="t-rcvp" placeholder="">
+        </div>
+        <div class="fg">
+          <label id="lbl-amt">Montant à envoyer (GNF) <span class="req">*</span></label>
+          <input type="number" id="t-amt" placeholder="0" min="0" oninput="calcTransfer()">
+        </div>
+        <div class="fg">
+          <label>Frais de transfert (%) <span class="req">*</span></label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="t-fee-pct" placeholder="2.5" min="0" max="100" step="0.1" style="width:90px;flex-shrink:0" oninput="calcTransfer()">
+            <div style="flex:1;background:var(--surface1);border:1px solid var(--border2);border-radius:var(--radius);padding:7px 10px;font-size:12px;color:var(--text3)">
+              <span id="t-fee-pct-hint">Taux par défaut du pays sélectionné</span>
+            </div>
+          </div>
+          <div class="hint">Modifiable par transaction — le taux par défaut vient du pays sélectionné</div>
+        </div>
+        <div class="fg">
+          <label>Date <span class="req">*</span></label>
+          <input type="date" id="t-date">
+        </div>
+        <!-- RECAP FRAIS & TOTAL -->
+        <div class="fg full">
+          <div class="fee-recap" id="fee-recap">
+            <div class="fee-recap-header"><i class="ti ti-receipt"></i>&nbsp;Récapitulatif des frais et total du transfert</div>
+            <!-- devise + taux -->
+            <div class="fee-recap-row highlight">
+              <span class="fr-label"><i class="ti ti-world"></i>Pays &amp; devise détectée</span>
+              <span class="fr-value" id="fc-devise"><span style="color:var(--text3);font-weight:400">Sélectionnez un pays</span></span>
+            </div>
+            <div class="fee-recap-row">
+              <span class="fr-label"><i class="ti ti-arrows-exchange"></i>Taux de change</span>
+              <span class="fr-value muted" id="fc-rate">—</span>
+            </div>
+            <div class="fee-recap-divider"></div>
+            <!-- montant brut -->
+            <div class="fee-recap-row">
+              <span class="fr-label"><i class="ti ti-coin"></i>Montant envoyé (GNF)</span>
+              <span class="fr-value" id="fc-brut">—</span>
+            </div>
+            <!-- frais % -->
+            <div class="fee-recap-row fee-row">
+              <span class="fr-label"><i class="ti ti-percentage"></i>Frais de transfert &nbsp;<span class="fee-pct-badge" id="fc-pct-badge">0 %</span></span>
+              <span class="fr-value red" id="fc-frais">—</span>
+            </div>
+            <!-- min/max hint -->
+            <div class="fee-recap-row" id="fc-minmax-row" style="display:none">
+              <span class="fr-label" style="font-size:11px;color:var(--text3);padding-left:20px"><i class="ti ti-info-circle"></i>&nbsp;<span id="fc-minmax">—</span></span>
+              <span></span>
+            </div>
+            <div class="fee-recap-divider"></div>
+            <!-- net GNF -->
+            <div class="fee-recap-row">
+              <span class="fr-label"><i class="ti ti-cash"></i>Montant net (après frais)</span>
+              <span class="fr-value blue" id="fc-net-gnf">—</span>
+            </div>
+            <!-- devise reçue -->
+            <div class="fee-recap-row net">
+              <span class="fr-label"><i class="ti ti-currency-dollar"></i>Montant reçu en devise locale</span>
+              <span class="fr-value" id="fc-net">—</span>
+            </div>
+            <!-- TOTAL GRAND -->
+            <div class="fee-recap-row total">
+              <span class="fr-label"><i class="ti ti-receipt-2"></i>&nbsp;TOTAL À PAYER PAR LE CLIENT</span>
+              <span class="fr-value" id="fc-total">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Statut</label>
+          <select id="t-stat">
+            <option value="complété">Complété</option>
+            <option value="en attente">En attente</option>
+            <option value="annulé">Annulé</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Mode de paiement</label>
+          <select id="t-mode">
+            <option value="espèces">Espèces</option>
+            <option value="mobile money">Mobile Money</option>
+            <option value="virement">Virement bancaire</option>
+            <option value="chèque">Chèque</option>
+          </select>
+        </div>
+        <div class="fg full">
+          <label>Notes / Motif</label>
+          <textarea id="t-notes" placeholder="Informations supplémentaires, motif du transfert..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-transfer')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveTransfer()"><i class="ti ti-device-floppy"></i>Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL PAYS ═══════════ -->
+<div class="modal-overlay" id="modal-country">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="mc-title">Ajouter un pays</h2>
+      <button class="modal-close" onclick="closeModal('modal-country')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="fg"><label>Nom du pays <span class="req">*</span></label><input type="text" id="c-name" placeholder="ex : Nigeria"></div>
+        <div class="fg"><label>Code ISO 2 lettres <span class="req">*</span></label><input type="text" id="c-code" placeholder="NG" maxlength="2" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();autoDetectCurrency()"></div>
+        <div class="fg">
+          <label>Devise <span class="req">*</span></label>
+          <input type="text" id="c-cur" placeholder="NGN" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+          <div class="hint" id="c-cur-hint"></div>
+        </div>
+        <div class="fg"><label>Symbole devise</label><input type="text" id="c-sym" placeholder="₦"></div>
+        <div class="fg">
+          <label>Taux de change (1 GNF = X devise)</label>
+          <input type="number" id="c-rate" placeholder="0.000001" step="any">
+        </div>
+        <div class="fg"><label>Emoji drapeau</label><input type="text" id="c-flag" placeholder="🇳🇬"></div>
+        <div class="fg">
+          <label>Frais de transfert (%)</label>
+          <input type="number" id="c-fee" placeholder="2.5" step="0.1" min="0" max="20" value="2.5">
+          <div class="hint">Pourcentage appliqué sur le montant envoyé</div>
+        </div>
+        <div class="fg"><label>Frais min (GNF)</label><input type="number" id="c-fee-min" placeholder="5000" value="5000"></div>
+        <div class="fg"><label>Frais max (GNF)</label><input type="number" id="c-fee-max" placeholder="500000" value="500000"></div>
+        <div class="fg full" id="c-detected" style="display:none">
+          <div class="currency-detected"><i class="ti ti-check"></i><span id="c-detected-text">Devise détectée automatiquement</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-country')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveCountry()"><i class="ti ti-plus"></i>Ajouter le pays</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════ DATA ════════════
+const USERS={
+  admin:{pass:'admin123',name:'Amadou Kouyaté',role:'Administrateur',initials:'AK',access:'all',email:'admin@transferguinee.gn',phone:'+224 620 000 001',photo:''},
+  caissier:{pass:'caisse1',name:'Mamadou Diallo',role:'Caissier',initials:'MD',access:'transfers',email:'caissier@transferguinee.gn',phone:'+224 620 000 002',photo:''},
+  superviseur:{pass:'super2024',name:'Fatoumata Bah',role:'Superviseur',initials:'FB',access:'view',email:'superviseur@transferguinee.gn',phone:'+224 620 000 003',photo:''},
+  directeur:{pass:'dir2024',name:'Ibrahim Sow',role:'Directeur',initials:'IS',access:'all',email:'directeur@transferguinee.gn',phone:'+224 620 000 004',photo:''}
+};
+
+// ISO code → {currency, symbol, flag, rate_approx}
+const CURRENCY_DB={
+  MR:{currency:'MRU',symbol:'UM',flag:'🇲🇷',rate:0.00350},
+  SL:{currency:'SLL',symbol:'Le',flag:'🇸🇱',rate:0.17000},
+  CI:{currency:'XOF',symbol:'FCFA',flag:'🇨🇮',rate:0.06100},
+  SN:{currency:'XOF',symbol:'FCFA',flag:'🇸🇳',rate:0.06100},
+  ML:{currency:'XOF',symbol:'FCFA',flag:'🇲🇱',rate:0.06100},
+  BF:{currency:'XOF',symbol:'FCFA',flag:'🇧🇫',rate:0.06100},
+  NG:{currency:'NGN',symbol:'₦',flag:'🇳🇬',rate:0.09000},
+  GH:{currency:'GHS',symbol:'₵',flag:'🇬🇭',rate:0.00048},
+  LR:{currency:'LRD',symbol:'$',flag:'🇱🇷',rate:0.03400},
+  GM:{currency:'GMD',symbol:'D',flag:'🇬🇲',rate:0.04500},
+  GW:{currency:'XOF',symbol:'FCFA',flag:'🇬🇼',rate:0.06100},
+  CM:{currency:'XAF',symbol:'FCFA',flag:'🇨🇲',rate:0.06100},
+  TG:{currency:'XOF',symbol:'FCFA',flag:'🇹🇬',rate:0.06100},
+  BJ:{currency:'XOF',symbol:'FCFA',flag:'🇧🇯',rate:0.06100},
+  MA:{currency:'MAD',symbol:'DH',flag:'🇲🇦',rate:0.00680},
+  FR:{currency:'EUR',symbol:'€',flag:'🇫🇷',rate:0.00009},
+  US:{currency:'USD',symbol:'$',flag:'🇺🇸',rate:0.00010},
+  GB:{currency:'GBP',symbol:'£',flag:'🇬🇧',rate:0.00008},
+  CN:{currency:'CNY',symbol:'¥',flag:'🇨🇳',rate:0.00072},
+  AE:{currency:'AED',symbol:'د.إ',flag:'🇦🇪',rate:0.00037},
+};
+
+const today=new Date();
+const currentMonth=today.toISOString().slice(0,7);
+const currentYear=today.getFullYear();
+
+let S={
+  currentUser:null,
+  editTransferId:null,
+  editCountryCode:null,
+  countries:[
+    {code:'MR',name:'Mauritanie',currency:'MRU',symbol:'UM',flag:'🇲🇷',rate:0.0035,fee:2.5,feeMin:5000,feeMax:300000},
+    {code:'SL',name:'Sierra Leone',currency:'SLL',symbol:'Le',flag:'🇸🇱',rate:0.17,fee:2.5,feeMin:5000,feeMax:300000},
+    {code:'CI',name:"Côte d'Ivoire",currency:'XOF',symbol:'FCFA',flag:'🇨🇮',rate:0.061,fee:2.0,feeMin:4000,feeMax:250000},
+  ],
+  transfers:[],
+  agency:{name:'TransferGuinée SARL',address:'Quartier Ratoma, Conakry, Guinée',phone:'+224 620 000 000',email:'contact@transferguinee.gn',license:'BCRG-2024-001'}
+};
+
+// ════════════ SEED DATA ════════════
+(function seedData(){
+  const snames=['Mamadou Diallo','Fatoumata Bah','Ibrahima Sow','Mariama Camara','Alpha Barry','Aminata Kouyaté','Oumar Sylla','Kadiatou Baldé','Sékou Condé','Aissatou Diakité','Boubacar Baldé','Hawa Diallo','Thierno Balde','Mariame Sow'];
+  const rnames={MR:['Ahmed Ndiaye','Mariam Fall','Cheikh Mbaye'],SL:['Josephine Kamara','Victor Sesay','Aminata Koroma'],CI:['Aya Konan','Kouassi Bamba','Marie Coulibaly']};
+  const modes=['espèces','espèces','mobile money','virement','espèces'];
+  const statuses=['complété','complété','complété','en attente','annulé','complété','complété'];
+  for(let i=0;i<100;i++){
+    const c=S.countries[i%S.countries.length];
+    const d=new Date(today);
+    d.setDate(d.getDate()-Math.floor(Math.random()*365));
+    const dir=Math.random()>0.4?'envoi':'reception';
+    const amt=Math.floor(Math.random()*12000000+300000);
+    const rawFee=amt*c.fee/100;
+    const fee=Math.round(Math.min(Math.max(rawFee,c.feeMin),c.feeMax));
+    const netAmt=dir==='envoi'?amt-fee:amt;
+    const converted=(netAmt*c.rate).toFixed(0)+' '+c.symbol;
+    S.transfers.push({
+      id:'TG-'+String(i+1).padStart(5,'0'),
+      country:c.code,direction:dir,
+      sender:dir==='envoi'?snames[i%snames.length]:(rnames[c.code]||snames)[i%3],
+      receiver:dir==='envoi'?(rnames[c.code]||snames)[i%3]:snames[i%snames.length],
+      senderPhone:'+224 6'+Math.floor(Math.random()*9000000+1000000),
+      receiverPhone:'',
+      amount:amt,fee,converted,
+      date:d.toISOString().slice(0,10),
+      status:statuses[i%statuses.length],
+      mode:modes[i%modes.length],notes:''
+    });
+  }
+  S.transfers.sort((a,b)=>b.date.localeCompare(a.date));
+})();
+
+// ════════════ LOGIN ════════════
+function togglePw(){
+  const inp=document.getElementById('li-pass');
+  const ico=document.getElementById('pw-eye');
+  if(inp.type==='password'){inp.type='text';ico.className='ti ti-eye-off';}
+  else{inp.type='password';ico.className='ti ti-eye';}
+}
+function fillCreds(u,p){document.getElementById('li-user').value=u;document.getElementById('li-pass').value=p;}
+function doLogin(){
+  const u=document.getElementById('li-user').value.trim();
+  const p=document.getElementById('li-pass').value;
+  const err=document.getElementById('login-error');
+  if(USERS[u]&&USERS[u].pass===p){
+    err.classList.remove('show');
+    S.currentUser={...USERS[u],username:u};
+    // Sidebar avatar
+    const av=document.getElementById('sb-avatar');
+    if(S.currentUser.photo){
+      av.innerHTML=`<img src="${S.currentUser.photo}" style="width:34px;height:34px;border-radius:50%;object-fit:cover">`;
+    }else{
+      av.textContent=S.currentUser.initials;
+      av.style.background='';av.style.color='';
+    }
+    document.getElementById('sb-uname').textContent=S.currentUser.name;
+    document.getElementById('sb-role').textContent=S.currentUser.role;
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    initApp();
+  }else{err.classList.add('show');}
+}
+function doLogout(){
+  S.currentUser=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('li-pass').value='';
+  document.getElementById('login-error').classList.remove('show');
+}
+
+// ════════════ SIDEBAR ════════════
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sb-overlay').style.display='block';}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sb-overlay').style.display='none';}
+
+// ════════════ INIT ════════════
+function initApp(){
+  buildYearSelect();
+  populateSelects();
+  document.getElementById('dash-month').value=currentMonth;
+  document.getElementById('r-month').value=currentMonth;
+  renderDashboard();
+  renderSettingsUsers();
+}
+
+function buildYearSelect(){
+  const sel=document.getElementById('r-year');sel.innerHTML='';
+  for(let y=2024;y<=2040;y++){
+    const o=document.createElement('option');o.value=y;o.textContent=y;
+    if(y===currentYear)o.selected=true;
+    sel.appendChild(o);
+  }
+}
+
+function populateSelects(){
+  ['dash-country','t-fc','r-cty','t-cty'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const isTransfer=id==='t-cty';
+    el.innerHTML=isTransfer?'':'<option value="all">Tous les pays</option>';
+    S.countries.forEach(c=>{
+      const o=document.createElement('option');o.value=c.code;
+      o.textContent=c.flag+' '+c.name+' ('+c.currency+')';
+      el.appendChild(o);
+    });
+  });
+}
+
+// ════════════ NAVIGATE ════════════
+const PAGE_TITLES={dashboard:'Tableau de bord',transfers:'Transferts',countries:'Pays et corridors',reports:'Rapports PDF',settings:'Paramètres'};
+const PAGE_BTN={dashboard:{text:'Nouveau transfert',icon:'ti-plus',fn:'openNewTransfer()'},transfers:{text:'Nouveau transfert',icon:'ti-plus',fn:'openNewTransfer()'},countries:{text:'Ajouter un pays',icon:'ti-plus',fn:'openAddCountry()'},reports:{text:'Imprimer A4 — PDF',icon:'ti-printer',fn:'generatePDF()',cls:'btn-success'},settings:null};
+
+function navigate(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(n=>{if(n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+page+"'"))n.classList.add('active');});
+  document.getElementById('topbar-title').textContent=PAGE_TITLES[page]||page;
+  const btn=document.getElementById('topbar-action-btn');
+  const cfg=PAGE_BTN[page];
+  if(cfg){btn.innerHTML=`<i class="ti ${cfg.icon}"></i><span class="hide-xs">${cfg.text}</span>`;btn.setAttribute('onclick',cfg.fn);btn.className='btn '+(cfg.cls||'btn-primary');btn.style.display='';}
+  else{btn.style.display='none';}
+  closeSidebar();
+  if(page==='dashboard')renderDashboard();
+  if(page==='transfers'){populateSelects();renderTransfersTable();}
+  if(page==='countries')renderCountries();
+  if(page==='reports'){populateSelects();updateRptCtrls();renderReport();}
+  if(page==='settings')renderSettingsUsers();
+}
+
+// ════════════ FORMAT ════════════
+function fmt(n){return Math.round(n).toLocaleString('fr-FR');}
+function fmtGNF(n){return fmt(n)+' GNF';}
+function fmtCur(n,sym){return fmt(n)+' '+sym;}
+// Fonctions PDF — sans toLocaleString (évite les espaces insécables → '/')
+function pdfNum(n){
+  const s=String(Math.round(n));
+  return s.replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+}
+function pdfGNF(n){return pdfNum(n)+' GNF';}
+function pdfCur(n,sym){return pdfNum(n)+' '+(sym||'');}
+function pdfDate(d){
+  // d = "2026-06-27" → "27/06/2026"
+  if(!d||d.length<10)return d||'';
+  return d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4);
+}
+
+// ════════════ FEE CALCULATION ════════════
+function calcFee(amount,country){
+  const rawFee=amount*country.fee/100;
+  return Math.round(Math.min(Math.max(rawFee,country.feeMin||0),country.feeMax||Infinity));
+}
+
+// ════════════ DASHBOARD ════════════
+let DC={};
+function renderDashboard(){
+  const month=document.getElementById('dash-month').value||currentMonth;
+  document.getElementById('dash-month').value=month;
+  const cty=document.getElementById('dash-country').value||'all';
+  const arr=S.transfers.filter(t=>t.date.slice(0,7)===month&&(cty==='all'||t.country===cty));
+  const comp=arr.filter(t=>t.status==='complété');
+  const [yr,mo]=month.split('-');
+  const mnames=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  document.getElementById('dash-tag').innerHTML=`<span class="tag"><i class="ti ti-calendar"></i>${mnames[parseInt(mo)-1]} ${yr}</span>`;
+
+  const vol=comp.reduce((s,t)=>s+t.amount,0);
+  const fees=comp.reduce((s,t)=>s+t.fee,0);
+  const pending=arr.filter(t=>t.status==='en attente').length;
+  const activePays=[...new Set(arr.map(t=>t.country))].length;
+
+  document.getElementById('kpi-grid').innerHTML=`
+    <div class="kpi kpi-blue"><div class="kpi-label"><i class="ti ti-coin"></i>Volume total</div><div class="kpi-value">${fmt(vol)}</div><div class="kpi-sub">GNF — transferts complétés</div></div>
+    <div class="kpi kpi-green"><div class="kpi-label"><i class="ti ti-cash"></i>Frais perçus</div><div class="kpi-value">${fmt(fees)}</div><div class="kpi-sub">GNF — revenus du mois</div></div>
+    <div class="kpi"><div class="kpi-label"><i class="ti ti-arrows-exchange"></i>Transactions</div><div class="kpi-value">${arr.length}</div><div class="kpi-sub">${comp.length} complétées · ${pending} en attente</div></div>
+    <div class="kpi kpi-amber"><div class="kpi-label"><i class="ti ti-world"></i>Pays actifs</div><div class="kpi-value">${activePays}</div><div class="kpi-sub">corridors utilisés ce mois</div></div>`;
+
+  // Charts
+  const cColors=['#1a6bbf','#0a8f0a','#d4a017','#b22b2b','#6b52cc','#0891b2'];
+  const byC={};S.countries.forEach(c=>{byC[c.code]={name:c.name,flag:c.flag,vol:0}});
+  comp.forEach(t=>{if(byC[t.country])byC[t.country].vol+=t.amount;});
+  if(DC.c)DC.c.destroy();
+  DC.c=new Chart(document.getElementById('chart-cty'),{type:'bar',data:{labels:S.countries.map(c=>byC[c.code].flag+' '+byC[c.code].name),datasets:[{data:S.countries.map(c=>byC[c.code].vol),backgroundColor:cColors.slice(0,S.countries.length),borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v/1000000)+'M'}}}}});
+
+  const env=comp.filter(t=>t.direction==='envoi').reduce((s,t)=>s+t.amount,0);
+  const rec=comp.filter(t=>t.direction==='reception').reduce((s,t)=>s+t.amount,0);
+  if(DC.d)DC.d.destroy();
+  DC.d=new Chart(document.getElementById('chart-dir'),{type:'doughnut',data:{labels:['Envois (GN→pays)','Réceptions (pays→GN)'],datasets:[{data:[env,rec],backgroundColor:['#1a6bbf','#0a8f0a'],borderWidth:0,hoverBorderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}}}});
+
+  const days={};const dim=new Date(parseInt(yr),parseInt(mo),0).getDate();
+  for(let d=1;d<=dim;d++)days[String(d).padStart(2,'0')]=0;
+  comp.forEach(t=>{const d=t.date.slice(8,10);if(days[d]!==undefined)days[d]+=t.amount;});
+  if(DC.day)DC.day.destroy();
+  DC.day=new Chart(document.getElementById('chart-daily'),{type:'line',data:{labels:Object.keys(days).map(Number),datasets:[{data:Object.values(days),borderColor:'#1a6bbf',backgroundColor:'rgba(26,107,191,.08)',fill:true,tension:.4,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v/1000000)+'M'}},x:{ticks:{maxTicksLimit:15}}}}});
+
+  document.getElementById('dash-count').textContent=arr.length+' transfert(s)';
+  document.getElementById('dash-table').innerHTML=buildRows(arr.slice(0,12));
+}
+function resetDash(){document.getElementById('dash-month').value=currentMonth;document.getElementById('dash-country').value='all';renderDashboard();}
+
+// ════════════ TABLE BUILDER ════════════
+function buildRows(arr){
+  if(!arr.length)return`<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin-bottom:8px"></i>Aucun transfert trouvé.</div>`;
+  const rows=arr.map(t=>{
+    const c=S.countries.find(x=>x.code===t.country)||{flag:'',name:t.country,symbol:'?'};
+    const dir=t.direction==='envoi'?`<span class="dir-out"><i class="ti ti-arrow-right"></i>Envoi</span>`:`<span class="dir-in"><i class="ti ti-arrow-left"></i>Réception</span>`;
+    const sclass=t.status==='complété'?'badge-success':t.status==='annulé'?'badge-danger':'badge-warn';
+    return`<tr>
+      <td class="fw600">${t.id}</td>
+      <td>${c.flag} ${c.name}</td>
+      <td>${dir}</td>
+      <td>${t.sender}</td>
+      <td>${t.receiver}</td>
+      <td class="text-right fw600">${fmtGNF(t.amount)}</td>
+      <td class="text-right text-muted">${fmtGNF(t.fee)}</td>
+      <td class="text-right">${t.converted}</td>
+      <td>${t.date}</td>
+      <td><span class="badge ${sclass}">${t.status}</span></td>
+      <td><button class="btn btn-sm btn-icon" onclick="editTransfer('${t.id}')" title="Modifier"><i class="ti ti-edit"></i></button></td>
+    </tr>`;
+  }).join('');
+  return`<table><thead><tr><th>Réf.</th><th>Pays</th><th>Direction</th><th>Expéditeur</th><th>Bénéficiaire</th><th class="text-right">Montant GNF</th><th class="text-right">Frais GNF</th><th class="text-right">Devise reçue</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ════════════ TRANSFERS PAGE ════════════
+function renderTransfersTable(){
+  const srch=(document.getElementById('t-srch').value||'').toLowerCase();
+  const cty=document.getElementById('t-fc').value||'all';
+  const dir=document.getElementById('t-fd').value||'all';
+  const sta=document.getElementById('t-fs').value||'all';
+  const mon=document.getElementById('t-fm').value||'';
+  const arr=S.transfers.filter(t=>{
+    if(cty!=='all'&&t.country!==cty)return false;
+    if(dir!=='all'&&t.direction!==dir)return false;
+    if(sta!=='all'&&t.status!==sta)return false;
+    if(mon&&t.date.slice(0,7)!==mon)return false;
+    if(srch&&!(t.id.toLowerCase().includes(srch)||t.sender.toLowerCase().includes(srch)||t.receiver.toLowerCase().includes(srch)))return false;
+    return true;
+  });
+  document.getElementById('t-count').textContent=arr.length+' résultat(s)';
+  document.getElementById('transfers-table').innerHTML=buildRows(arr);
+}
+
+// ════════════ COUNTRIES PAGE ════════════
+function renderCountries(){
+  document.getElementById('countries-grid').innerHTML=S.countries.map(c=>{
+    const cnt=S.transfers.filter(t=>t.country===c.code).length;
+    const vol=S.transfers.filter(t=>t.country===c.code&&t.status==='complété').reduce((s,t)=>s+t.amount,0);
+    const fees=S.transfers.filter(t=>t.country===c.code&&t.status==='complété').reduce((s,t)=>s+t.fee,0);
+    return`<div class="country-card">
+      <div class="country-flag">${c.flag}</div>
+      <div class="country-info">
+        <div class="cname">${c.name}</div>
+        <div class="ccur">Devise : <strong>${c.currency}</strong> (${c.symbol}) · Taux : 1 GNF = ${c.rate.toFixed(6)} ${c.symbol}</div>
+        <div class="cstats">${cnt} transferts · ${fmt(vol)} GNF · Frais : ${fmt(fees)} GNF</div>
+        <span class="cfee"><i class="ti ti-percentage"></i>Frais : ${c.fee}% (min ${fmt(c.feeMin)} · max ${fmt(c.feeMax)} GNF)</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const rows=S.countries.map(c=>`<tr>
+    <td>${c.flag} ${c.name}</td>
+    <td class="fw600">${c.currency}</td>
+    <td>${c.symbol}</td>
+    <td class="text-right fw600">${c.rate.toFixed(6)} ${c.symbol}</td>
+    <td class="text-right">${Math.round(1/c.rate).toLocaleString('fr-FR')} GNF</td>
+    <td class="text-right"><span class="badge badge-warn">${c.fee}%</span></td>
+    <td class="text-right">${fmtGNF(c.feeMin)}</td>
+    <td class="text-right">${fmtGNF(c.feeMax)}</td>
+    <td><button class="btn btn-sm btn-icon" onclick="editCountry('${c.code}')" title="Modifier"><i class="ti ti-edit"></i></button></td>
+  </tr>`).join('');
+  document.getElementById('rates-table').innerHTML=`<table><thead><tr><th>Pays</th><th>Devise</th><th>Symbole</th><th class="text-right">1 GNF →</th><th class="text-right">1 devise →</th><th class="text-right">Frais%</th><th class="text-right">Frais min</th><th class="text-right">Frais max</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ════════════ TRANSFER MODAL ════════════
+function openNewTransfer(){
+  S.editTransferId=null;
+  document.getElementById('mt-title').textContent='Nouveau transfert';
+  ['t-snd','t-rcv','t-sndp','t-rcvp','t-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('t-amt').value='';
+  document.getElementById('t-fee-pct').value='';
+  document.getElementById('t-fee-pct-hint').textContent='Taux par défaut du pays sélectionné';
+  document.getElementById('t-date').value=today.toISOString().slice(0,10);
+  document.getElementById('t-stat').value='complété';
+  document.getElementById('t-dir').value='envoi';
+  document.getElementById('t-mode').value='espèces';
+  populateSelects();
+  onCountryChange();
+  updateDirectionHints();
+  openModal('modal-transfer');
+}
+function editTransfer(id){
+  const t=S.transfers.find(x=>x.id===id);if(!t)return;
+  S.editTransferId=id;
+  document.getElementById('mt-title').textContent='Modifier le transfert — '+id;
+  populateSelects();
+  document.getElementById('t-dir').value=t.direction;
+  document.getElementById('t-cty').value=t.country;
+  document.getElementById('t-snd').value=t.sender;
+  document.getElementById('t-rcv').value=t.receiver;
+  document.getElementById('t-sndp').value=t.senderPhone||'';
+  document.getElementById('t-rcvp').value=t.receiverPhone||'';
+  document.getElementById('t-amt').value=t.amount;
+  document.getElementById('t-fee-pct').value=t.feePct||'';
+  const c=S.countries.find(x=>x.code===t.country);
+  document.getElementById('t-fee-pct-hint').textContent=c?'Taux appliqué : '+(t.feePct||c.fee)+'% — défaut pays : '+c.fee+'%':'';
+  document.getElementById('t-date').value=t.date;
+  document.getElementById('t-stat').value=t.status;
+  document.getElementById('t-mode').value=t.mode||'espèces';
+  document.getElementById('t-notes').value=t.notes||'';
+  updateDirectionHints();
+  calcTransfer();
+  openModal('modal-transfer');
+}
+
+function updateDirectionHints(){
+  const dir=document.getElementById('t-dir').value;
+  if(dir==='envoi'){
+    document.getElementById('lbl-sender').innerHTML='Expéditeur (Guinée) <span class="req">*</span>';
+    document.getElementById('lbl-recv').innerHTML='Bénéficiaire (pays partenaire) <span class="req">*</span>';
+    document.getElementById('lbl-amt').innerHTML='Montant à envoyer (GNF) <span class="req">*</span>';
+  }else{
+    document.getElementById('lbl-sender').innerHTML='Expéditeur (pays partenaire) <span class="req">*</span>';
+    document.getElementById('lbl-recv').innerHTML='Bénéficiaire (Guinée) <span class="req">*</span>';
+    document.getElementById('lbl-amt').innerHTML='Montant reçu (GNF équivalent) <span class="req">*</span>';
+  }
+  calcTransfer();
+}
+
+function onCountryChange(){
+  const cc=document.getElementById('t-cty').value;
+  const c=S.countries.find(x=>x.code===cc);
+  if(c){
+    document.getElementById('t-fee-pct').value=c.fee;
+    document.getElementById('t-fee-pct-hint').textContent='Taux par défaut pour '+c.flag+' '+c.name+' : '+c.fee+'%';
+  }
+  calcTransfer();
+}
+
+function calcTransfer(){
+  const cc=document.getElementById('t-cty').value;
+  const c=S.countries.find(x=>x.code===cc);
+  const amt=parseFloat(document.getElementById('t-amt').value)||0;
+  const dir=document.getElementById('t-dir').value;
+  // Use the editable fee % field, fall back to country default
+  const feePctInput=document.getElementById('t-fee-pct');
+  const feePct=parseFloat(feePctInput.value)||(c?c.fee:0);
+
+  if(!c){
+    document.getElementById('fc-devise').innerHTML='<span style="color:var(--text3)">Sélectionnez un pays</span>';
+    document.getElementById('fc-rate').textContent='—';
+    const pb=document.getElementById('fc-pct-badge');if(pb)pb.textContent='0 %';
+    document.getElementById('fc-brut').textContent='0 GNF';
+    document.getElementById('fc-frais').textContent='0 GNF';
+    document.getElementById('fc-net-gnf').textContent='0 GNF';
+    document.getElementById('fc-net').textContent='—';
+    document.getElementById('fc-total').textContent='0 GNF';
+    document.getElementById('fc-minmax-row').style.display='none';
+    return;
+  }
+
+  document.getElementById('fc-devise').innerHTML=
+    '<span class="fee-devise-badge"><i class="ti ti-check"></i>'+c.currency+' ('+c.symbol+') — '+c.flag+' '+c.name+'</span>';
+  document.getElementById('fc-rate').textContent=
+    '1 GNF = '+c.rate.toFixed(6)+' '+c.symbol+'   |   1 '+c.symbol+' = '+Math.round(1/c.rate).toLocaleString('fr-FR')+' GNF';
+
+  const pctBadge=document.getElementById('fc-pct-badge');
+  if(pctBadge)pctBadge.textContent=feePct+' %';
+
+  const rawFee=amt*feePct/100;
+  const fee=Math.round(Math.min(Math.max(rawFee,c.feeMin||0),c.feeMax||Infinity));
+  const netGNF=Math.max(0,amt-fee);
+  const netDev=netGNF*c.rate;
+  const totalClient=dir==='envoi'?amt+fee:amt;
+
+  document.getElementById('fc-brut').textContent=fmtGNF(amt);
+  document.getElementById('fc-frais').textContent='− '+fmtGNF(fee)+' ('+feePct+'%)';
+
+  const mmRow=document.getElementById('fc-minmax-row');
+  if(c.feeMin||c.feeMax){
+    mmRow.style.display='flex';
+    let hint='Plancher : '+fmtGNF(c.feeMin);
+    if(c.feeMax&&c.feeMax<Infinity)hint+='   ·   Plafond : '+fmtGNF(c.feeMax);
+    if(rawFee<c.feeMin)hint+='   ⚠ minimum appliqué';
+    if(c.feeMax&&rawFee>c.feeMax)hint+='   ⚠ plafond appliqué';
+    document.getElementById('fc-minmax').textContent=hint;
+  }else{mmRow.style.display='none';}
+
+  document.getElementById('fc-net-gnf').textContent=fmtGNF(netGNF);
+  document.getElementById('fc-net').textContent=amt>0?fmtCur(Math.round(netDev),c.symbol):'—';
+  const totalEl=document.getElementById('fc-total');
+  if(amt>0){
+    if(dir==='envoi'){
+      totalEl.textContent=fmtGNF(amt)+' + '+fmtGNF(fee)+' frais = '+fmtGNF(totalClient);
+    }else{
+      totalEl.textContent=fmtGNF(amt)+' GNF encaissé net';
+    }
+  }else{totalEl.textContent='—';}
+}
+
+function saveTransfer(){
+  const cc=document.getElementById('t-cty').value;
+  const c=S.countries.find(x=>x.code===cc);
+  const amt=parseFloat(document.getElementById('t-amt').value)||0;
+  const feePct=parseFloat(document.getElementById('t-fee-pct').value)||(c?c.fee:0);
+  const snd=document.getElementById('t-snd').value.trim();
+  const rcv=document.getElementById('t-rcv').value.trim();
+  if(!snd||!rcv||!amt||!cc){alert('Veuillez remplir les champs obligatoires (*).');return;}
+  const rawFee=amt*feePct/100;
+  const fee=c?Math.round(Math.min(Math.max(rawFee,c.feeMin||0),c.feeMax||Infinity)):Math.round(rawFee);
+  const netGNF=Math.max(0,amt-fee);
+  const converted=c?fmtCur(Math.round(netGNF*c.rate),c.symbol):'?';
+  const t={
+    id:S.editTransferId||'TG-'+String(S.transfers.length+1).padStart(5,'0'),
+    country:cc,
+    direction:document.getElementById('t-dir').value,
+    sender:snd,receiver:rcv,
+    senderPhone:document.getElementById('t-sndp').value,
+    receiverPhone:document.getElementById('t-rcvp').value,
+    amount:amt,feePct,fee,converted,
+    totalClient:document.getElementById('t-dir').value==='envoi'?amt+fee:amt,
+    date:document.getElementById('t-date').value,
+    status:document.getElementById('t-stat').value,
+    mode:document.getElementById('t-mode').value,
+    notes:document.getElementById('t-notes').value
+  };
+  if(S.editTransferId){const i=S.transfers.findIndex(x=>x.id===S.editTransferId);if(i>=0)S.transfers[i]=t;}
+  else{S.transfers.unshift(t);}
+  closeModal('modal-transfer');
+  renderDashboard();
+  if(document.getElementById('page-transfers').classList.contains('active'))renderTransfersTable();
+}
+
+// ════════════ COUNTRY MODAL ════════════
+function autoDetectCurrency(){
+  const code=document.getElementById('c-code').value.toUpperCase();
+  const db=CURRENCY_DB[code];
+  const det=document.getElementById('c-detected');
+  if(db){
+    document.getElementById('c-cur').value=db.currency;
+    document.getElementById('c-sym').value=db.symbol;
+    document.getElementById('c-flag').value=db.flag;
+    document.getElementById('c-rate').value=db.rate;
+    document.getElementById('c-detected-text').textContent='✓ Devise '+db.currency+' détectée automatiquement pour '+code;
+    det.style.display='flex';
+  }else{det.style.display='none';}
+}
+
+function openAddCountry(){
+  S.editCountryCode=null;
+  document.getElementById('mc-title').textContent='Ajouter un pays';
+  ['c-name','c-code','c-cur','c-sym','c-flag','c-rate'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('c-fee').value='2.5';
+  document.getElementById('c-fee-min').value='5000';
+  document.getElementById('c-fee-max').value='500000';
+  document.getElementById('c-detected').style.display='none';
+  openModal('modal-country');
+}
+function editCountry(code){
+  const c=S.countries.find(x=>x.code===code);if(!c)return;
+  S.editCountryCode=code;
+  document.getElementById('mc-title').textContent='Modifier — '+c.name;
+  document.getElementById('c-name').value=c.name;
+  document.getElementById('c-code').value=c.code;
+  document.getElementById('c-cur').value=c.currency;
+  document.getElementById('c-sym').value=c.symbol;
+  document.getElementById('c-flag').value=c.flag;
+  document.getElementById('c-rate').value=c.rate;
+  document.getElementById('c-fee').value=c.fee;
+  document.getElementById('c-fee-min').value=c.feeMin||5000;
+  document.getElementById('c-fee-max').value=c.feeMax||500000;
+  document.getElementById('c-detected').style.display='none';
+  openModal('modal-country');
+}
+function saveCountry(){
+  const code=document.getElementById('c-code').value.toUpperCase();
+  const name=document.getElementById('c-name').value.trim();
+  const currency=document.getElementById('c-cur').value.toUpperCase();
+  if(!code||!name||!currency){alert('Champs obligatoires manquants.');return;}
+  if(!S.editCountryCode&&S.countries.find(x=>x.code===code)){alert('Ce code pays existe déjà.');return;}
+  const c={
+    code,name,currency,
+    symbol:document.getElementById('c-sym').value||currency,
+    flag:document.getElementById('c-flag').value||'🌍',
+    rate:parseFloat(document.getElementById('c-rate').value)||0.001,
+    fee:parseFloat(document.getElementById('c-fee').value)||2.5,
+    feeMin:parseFloat(document.getElementById('c-fee-min').value)||5000,
+    feeMax:parseFloat(document.getElementById('c-fee-max').value)||500000
+  };
+  if(S.editCountryCode){const i=S.countries.findIndex(x=>x.code===S.editCountryCode);if(i>=0)S.countries[i]=c;}
+  else S.countries.push(c);
+  populateSelects();closeModal('modal-country');renderCountries();
+}
+
+// ════════════ REPORTS ════════════
+function updateRptCtrls(){
+  const t=document.getElementById('r-type').value;
+  document.getElementById('rg-m').style.display=t==='mensuel'?'flex':'none';
+  document.getElementById('rg-d').style.display=t==='journalier'?'flex':'none';
+  document.getElementById('rg-w').style.display=t==='hebdomadaire'?'flex':'none';
+  document.getElementById('rg-y').style.display=t==='annuel'?'flex':'none';
+}
+function getISOWeek(dt){
+  const d=new Date(dt);d.setHours(0,0,0,0);d.setDate(d.getDate()+3-(d.getDay()+6)%7);
+  const w1=new Date(d.getFullYear(),0,4);
+  return[d.getFullYear(),1+Math.round(((d-w1)/86400000-3+(w1.getDay()+6)%7)/7)];
+}
+function getReportData(){
+  const t=document.getElementById('r-type').value;
+  const cty=document.getElementById('r-cty').value;
+  const dir=document.getElementById('r-dir').value;
+  let arr=S.transfers.filter(x=>x.status==='complété');
+  if(cty!=='all')arr=arr.filter(x=>x.country===cty);
+  if(dir!=='all')arr=arr.filter(x=>x.direction===dir);
+  if(t==='journalier'){const day=document.getElementById('r-day').value||today.toISOString().slice(0,10);arr=arr.filter(x=>x.date===day);}
+  else if(t==='hebdomadaire'){const w=document.getElementById('r-week').value;if(w){const[wy,wn]=w.split('-W');arr=arr.filter(x=>{const[ty,tn]=getISOWeek(new Date(x.date));return ty===parseInt(wy)&&tn===parseInt(wn);});}}
+  else if(t==='mensuel'){const m=document.getElementById('r-month').value||currentMonth;document.getElementById('r-month').value=m;arr=arr.filter(x=>x.date.slice(0,7)===m);}
+  else if(t==='annuel'){const y=document.getElementById('r-year').value||currentYear;arr=arr.filter(x=>x.date.slice(0,4)===String(y));}
+  return arr;
+}
+
+function renderReport(){
+  const arr=getReportData();
+  const tl={journalier:'Rapport journalier',hebdomadaire:'Rapport hebdomadaire',mensuel:'Rapport mensuel',annuel:'Rapport annuel'};
+  const type=document.getElementById('r-type').value;
+  const ag=S.agency;
+  const vol=arr.reduce((s,t)=>s+t.amount,0);
+  const fees=arr.reduce((s,t)=>s+t.fee,0);
+  const env=arr.filter(t=>t.direction==='envoi');
+  const rec=arr.filter(t=>t.direction==='reception');
+
+  const rows=arr.slice(0,60).map(t=>{
+    const c=S.countries.find(x=>x.code===t.country)||{flag:'',name:t.country,symbol:'?'};
+    return`<tr>
+      <td>${t.id}</td><td>${c.flag} ${c.name}</td>
+      <td>${t.direction==='envoi'?'→ Envoi':'← Réception'}</td>
+      <td>${t.sender}</td><td>${t.receiver}</td>
+      <td class="text-right fw600">${fmtGNF(t.amount)}</td>
+      <td class="text-right"><span style="color:var(--amber);font-weight:600">${t.feePct||c.fee||'—'}%</span></td>
+      <td class="text-right" style="color:var(--red)">${fmtGNF(t.fee)}</td>
+      <td class="text-right" style="color:var(--blue);font-weight:600">${t.totalClient?fmtGNF(t.totalClient):fmtGNF(t.amount+t.fee)}</td>
+      <td class="text-right">${t.converted}</td>
+      <td>${t.date}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('rpt-preview').innerHTML=`
+    <div class="rpt-header">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          ${ag.logo?`<img src="${ag.logo}" style="height:52px;width:auto;object-fit:contain;border-radius:6px;border:1px solid var(--border);padding:3px;background:white">`:''}
+          <div>
+            <div class="rpt-agency">${ag.name}</div>
+            ${ag.slogan?`<div style="font-size:12px;color:var(--text3);margin-top:1px;font-style:italic">${ag.slogan}</div>`:''}
+            <div class="rpt-sub">${ag.address}${ag.city?' · '+ag.city:''}${ag.bp?' · '+ag.bp:''}</div>
+            <div class="rpt-sub">${ag.phone}${ag.phone2?' · '+ag.phone2:''} · ${ag.email}${ag.web?' · '+ag.web:''}</div>
+            <div class="rpt-sub">Licence : ${ag.license}</div>
+            <div class="rpt-type">${tl[type]}</div>
+          </div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:var(--text3)">
+          <div>Généré le ${today.toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+          <div>Opérateur : ${S.currentUser.name} (${S.currentUser.role})</div>
+        </div>
+      </div>
+      <div class="rpt-meta">
+        <span><i class="ti ti-arrows-exchange"></i> ${arr.length} transactions</span>
+        <span><i class="ti ti-arrow-right"></i> ${env.length} envois</span>
+        <span><i class="ti ti-arrow-left"></i> ${rec.length} réceptions</span>
+        <span><i class="ti ti-world"></i> ${[...new Set(arr.map(t=>t.country))].length} pays</span>
+      </div>
+    </div>
+    <div class="rpt-totals">
+      <div class="rpt-total blue"><div class="lbl">Volume total</div><div class="val">${fmtGNF(vol)}</div></div>
+      <div class="rpt-total green"><div class="lbl">Total frais perçus</div><div class="val">${fmtGNF(fees)}</div></div>
+      <div class="rpt-total amber"><div class="lbl">Moyenne / transaction</div><div class="val">${arr.length?fmtGNF(Math.round(vol/arr.length)):0}</div></div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="rpt-table">
+        <thead><tr><th>Réf.</th><th>Pays</th><th>Direction</th><th>Expéditeur</th><th>Bénéficiaire</th><th>Montant GNF</th><th>Frais%</th><th>Frais GNF</th><th>Total client</th><th>Devise reçue</th><th>Date</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${arr.length>60?`<div class="empty" style="padding:10px;font-size:12px">… ${arr.length-60} autres transactions dans le PDF téléchargé</div>`:''}
+    </div>`;
+}
+
+function generatePDF(){
+  const arr=getReportData();
+  const{jsPDF}=window.jspdf;
+  // Utiliser le format paysage A4 pour avoir plus de place
+  const doc=new jsPDF({orientation:'l',unit:'mm',format:'a4'});
+  const PW=297; const PH=210; const M=12; const CW=PW-M*2; // 273mm disponibles
+
+  const tl={journalier:'Rapport journalier',hebdomadaire:'Rapport hebdomadaire',mensuel:'Rapport mensuel',annuel:'Rapport annuel'};
+  const type=document.getElementById('r-type').value;
+  const ag=S.agency;
+  const vol=arr.reduce((s,t)=>s+t.amount,0);
+  const fees=arr.reduce((s,t)=>s+t.fee,0);
+  const totalAll=arr.reduce((s,t)=>s+(t.totalClient||t.amount+t.fee),0);
+
+  // ── EN-TÊTE ──
+  const hasLogo=!!(ag.logo);
+  const hdrH=40;
+  doc.setFillColor(12,68,124);doc.rect(0,0,PW,hdrH,'F');
+  doc.setTextColor(255,255,255);
+
+  let textX=M;
+  if(hasLogo){
+    try{
+      doc.setFillColor(255,255,255);doc.roundedRect(M,6,22,22,2,2,'F');
+      doc.addImage(ag.logo,'',M+1,7,20,20);
+      textX=M+26;
+    }catch(e){textX=M;}
+  }
+
+  doc.setFontSize(16);doc.setFont('helvetica','bold');
+  doc.text((ag.name||'TransferGuinée'),textX,13);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');
+  if(ag.slogan){doc.setFont('helvetica','italic');doc.text(ag.slogan,textX,18);doc.setFont('helvetica','normal');}
+  const addrLine=[ag.address,ag.city,ag.bp].filter(Boolean).join(' · ');
+  if(addrLine)doc.text(addrLine,textX,ag.slogan?23:19);
+  const telLine=[ag.phone,ag.phone2].filter(Boolean).join(' / ');
+  const contactLine=[telLine,ag.email,ag.web].filter(Boolean).join(' · ');
+  if(contactLine)doc.text(contactLine,textX,ag.slogan?27:23);
+  doc.text('Licence : '+(ag.license||'—')+' · Opérateur : '+S.currentUser.name+' ('+S.currentUser.role+')',textX,ag.slogan?32:28);
+
+  // Type rapport + date — côté droit
+  doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text(tl[type],PW-M,12,{align:'right'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');
+  doc.text('Généré le '+today.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}),PW-M,19,{align:'right'});
+  doc.text(arr.length+' transaction(s)',PW-M,25,{align:'right'});
+
+  let y=hdrH+5;
+
+  // ── BOÎTES RÉCAPITULATIF ──
+  doc.setTextColor(0,0,0);
+  const boxes=[
+    [arr.length+' tx',      'Nb transactions'],
+    [pdfGNF(vol),           'Volume total (GNF)'],
+    [pdfGNF(fees),          'Total frais (GNF)'],
+    [pdfGNF(totalAll),      'Total client (GNF)'],
+    [arr.length?pdfGNF(Math.round(vol/arr.length)):'0 GNF','Moy. / transaction'],
+  ];
+  const bw=(CW-4*4)/5;
+  boxes.forEach((b,i)=>{
+    const x=M+i*(bw+4);
+    doc.setFillColor(230,241,251);doc.roundedRect(x,y,bw,14,2,2,'F');
+    doc.setFontSize(6.5);doc.setTextColor(80,80,80);
+    doc.text(b[1],x+bw/2,y+5,{align:'center'});
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(12,68,124);
+    doc.text(String(b[0]),x+bw/2,y+11,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setTextColor(0,0,0);
+  });
+  y+=19;
+
+  // ── TABLEAU ──
+  const cols=[
+    {h:'Reference',    w:22, align:'left'},
+    {h:'Pays',         w:28, align:'left'},
+    {h:'Direction',    w:22, align:'left'},
+    {h:'Expediteur',   w:32, align:'left'},
+    {h:'Beneficiaire', w:32, align:'left'},
+    {h:'Montant GNF',  w:32, align:'right'},
+    {h:'Frais%',       w:13, align:'center'},
+    {h:'Frais GNF',    w:29, align:'right'},
+    {h:'Total Client', w:32, align:'right'},
+    {h:'Devise recue', w:18, align:'right'},
+    {h:'Date',         w:13, align:'center'},
+  ];
+  // 22+28+22+32+32+32+13+29+32+18+13 = 273 ✓
+
+  const ROW_H=6.5;
+  const HDR_H=7.5;
+
+  function drawTableHeader(yy){
+    doc.setFillColor(12,68,124);doc.rect(M,yy,CW,HDR_H,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+    let cx=M;
+    cols.forEach(col=>{
+      const tx=col.align==='right'?cx+col.w-1.5:col.align==='center'?cx+col.w/2:cx+1.5;
+      const ta=col.align==='right'?{align:'right'}:col.align==='center'?{align:'center'}:{};
+      doc.text(col.h,tx,yy+5,ta);
+      cx+=col.w;
+    });
+    doc.setFont('helvetica','normal');doc.setTextColor(0,0,0);
+    return yy+HDR_H;
+  }
+
+  y=drawTableHeader(y);
+
+  doc.setFontSize(7.5);
+  arr.forEach((t,idx)=>{
+    if(y+ROW_H>PH-16){
+      doc.setFontSize(6.5);doc.setTextColor(150,150,150);
+      const ft=(ag.footer||ag.name+' - '+ag.license).replace(/[^\x00-\x7F]/g,'').slice(0,110);
+      doc.text(ft,M,PH-5);
+      doc.text('Page '+(doc.internal.getNumberOfPages()),PW-M,PH-5,{align:'right'});
+      doc.addPage();
+      doc.setFillColor(12,68,124);doc.rect(0,0,PW,9,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      const agName=(ag.name||'TransferGuinee').replace(/[^\x00-\x7F]/g,function(c){const m={'é':'e','è':'e','ê':'e','à':'a','â':'a','î':'i','ô':'o','û':'u','ç':'c','É':'E','È':'E','Ê':'E','À':'A','Â':'A','Î':'I','Ô':'O','Û':'U','Ç':'C'};return m[c]||'?';});
+      doc.text(agName+' - '+tl[type]+' (suite)',M,6);
+      doc.text('Page '+(doc.internal.getNumberOfPages()),PW-M,6,{align:'right'});
+      doc.setTextColor(0,0,0);doc.setFont('helvetica','normal');
+      y=13;y=drawTableHeader(y);doc.setFontSize(7.5);
+    }
+
+    if(idx%2===0){doc.setFillColor(247,250,254);doc.rect(M,y,CW,ROW_H,'F');}
+
+    const c=S.countries.find(x=>x.code===t.country)||{name:t.country,symbol:'',fee:0};
+    const feePct=(t.feePct!=null?t.feePct:(c.fee||0));
+    const totalClient=t.totalClient||(t.amount+(t.fee||0));
+
+    // Extraire uniquement le montant numérique de t.converted (ex: "17566 UM" ou "232275 FCFA")
+    const convParts=(t.converted||'').trim().split(/\s+/);
+    const convNum=convParts[0]||'';
+    const convSym=convParts.slice(1).join(' ')||c.symbol||'';
+    // Reformater avec pdfNum pour éviter les espaces insécables
+    const convNumClean=convNum.replace(/[\s\u00A0]/g,'');
+    const convDisplay=pdfNum(parseInt(convNumClean)||0)+' '+convSym;
+
+    // Direction en ASCII pur
+    const dirTxt=t.direction==='envoi'?'Envoi ->':'<- Reception';
+
+    // Sanitize text for PDF (remove non-latin chars that jsPDF can't render)
+    function san(s){
+      return String(s||'').replace(/[^\x20-\x7E\u00C0-\u017E]/g,'').slice(0,50);
+    }
+    function sanNum(s){return String(s||'').replace(/[^\x20-\x7E]/g,'');}
+
+    const cells=[
+      {v:san(t.id),                  align:'left'},
+      {v:san(c.name),                align:'left'},
+      {v:dirTxt,                     align:'left'},
+      {v:san(t.sender),              align:'left'},
+      {v:san(t.receiver),            align:'left'},
+      {v:pdfGNF(t.amount),           align:'right'},
+      {v:feePct+'%',                 align:'center'},
+      {v:pdfGNF(t.fee||0),           align:'right'},
+      {v:pdfGNF(totalClient),        align:'right'},
+      {v:sanNum(convDisplay),        align:'right'},
+      {v:pdfDate(t.date),            align:'center'},
+    ];
+
+    doc.setTextColor(30,30,30);
+    let cx=M;
+    cells.forEach((cell,i)=>{
+      const col=cols[i];
+      // Tronquer proprement: 1 char helvetica 7.5pt ≈ 2.0mm
+      const maxch=Math.floor((col.w-2)/2.0);
+      const text=String(cell.v).slice(0,maxch);
+      const ty=y+ROW_H-1.8;
+      if(cell.align==='right'){
+        doc.text(text,cx+col.w-1.5,ty,{align:'right'});
+      }else if(cell.align==='center'){
+        doc.text(text,cx+col.w/2,ty,{align:'center'});
+      }else{
+        doc.text(text,cx+1.5,ty);
+      }
+      cx+=col.w;
+    });
+
+    doc.setDrawColor(210,225,245);doc.line(M,y+ROW_H,M+CW,y+ROW_H);
+    y+=ROW_H;
+  });
+
+  // ── LIGNE TOTAUX ──
+  y+=3;
+  if(y+10>PH-16){doc.addPage();y=14;}
+  doc.setFillColor(12,68,124);doc.rect(M,y,CW,9,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+  doc.text('TOTAUX  '+arr.length+' op.',M+2,y+6);
+  doc.text('Volume: '+pdfGNF(vol),M+100,y+6,{align:'right'});
+  doc.text('Frais: '+pdfGNF(fees),M+160,y+6,{align:'right'});
+  doc.text('Total: '+pdfGNF(totalAll),M+CW,y+6,{align:'right'});
+  y+=9;
+
+  // ── PIED DE PAGE TOUTES PAGES ──
+  const totalPages=doc.internal.getNumberOfPages();
+  for(let i=1;i<=totalPages;i++){
+    doc.setPage(i);
+    doc.setFontSize(6.5);doc.setFont('helvetica','normal');doc.setTextColor(150,150,150);
+    const ft=(ag.footer||ag.name+' - '+ag.license+' - Document confidentiel').replace(/[^\x00-\x7F]/g,function(c){const m={'é':'e','è':'e','ê':'e','à':'a','â':'a','î':'i','ô':'o','û':'u','ç':'c','É':'E','Â':'A'};return m[c]||'';}).slice(0,120);
+    doc.text(ft,M,PH-2);
+    doc.text('Page '+i+'/'+totalPages,PW-M,PH-2,{align:'right'});
+  }
+
+  doc.save('TransferGuinee_'+type+'_'+today.toISOString().slice(0,10)+'.pdf');
+}
+
+// ════════════ SETTINGS ════════════
+function loadLogo(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    S.agency.logo=e.target.result;
+    document.getElementById('logo-preview-img').src=e.target.result;
+    document.getElementById('logo-preview-img').style.display='block';
+    document.getElementById('logo-placeholder').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+function removeLogo(){
+  S.agency.logo='';
+  document.getElementById('logo-preview-img').src='';
+  document.getElementById('logo-preview-img').style.display='none';
+  document.getElementById('logo-placeholder').style.display='flex';
+  document.getElementById('logo-file').value='';
+}
+function previewAgencyName(){}
+function previewAgencyCard(){
+  const ag=S.agency;
+  const card=document.getElementById('agency-preview-card');
+  const content=document.getElementById('agency-preview-content');
+  card.style.display='block';
+  content.innerHTML=`
+    <div style="border:2px solid var(--blue);border-radius:var(--radius-lg);overflow:hidden">
+      <div style="background:var(--blue-d);padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        ${ag.logo?`<img src="${ag.logo}" style="height:50px;width:auto;object-fit:contain;background:white;border-radius:6px;padding:3px">`:'<div style="width:50px;height:50px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff"><i class="ti ti-arrows-exchange"></i></div>'}
+        <div style="flex:1;min-width:160px">
+          <div style="color:#fff;font-size:16px;font-weight:700">${ag.name}</div>
+          <div style="color:rgba(255,255,255,.7);font-size:11px;margin-top:2px">${ag.slogan||''}</div>
+          <div style="color:rgba(255,255,255,.6);font-size:10px;margin-top:2px">Licence : ${ag.license}</div>
+        </div>
+        <div style="text-align:right;color:rgba(255,255,255,.8);font-size:11px;min-width:180px">
+          <div>${ag.address}</div>
+          ${ag.bp?`<div>${ag.bp} · ${ag.city||''}</div>`:`<div>${ag.city||''}</div>`}
+          <div>${ag.phone}${ag.phone2?' · '+ag.phone2:''}</div>
+          <div>${ag.email}${ag.web?' · '+ag.web:''}</div>
+        </div>
+      </div>
+      <div style="padding:8px 18px;background:var(--surface1);font-size:11px;color:var(--text3);border-top:1px solid var(--border)">${ag.footer||''}</div>
+    </div>`;
+  card.scrollIntoView({behavior:'smooth'});
+}
+function saveSettings(){
+  S.agency={
+    ...S.agency,
+    name:document.getElementById('ag-name').value,
+    license:document.getElementById('ag-lic').value,
+    slogan:document.getElementById('ag-slogan').value,
+    country:document.getElementById('ag-country').value,
+    address:document.getElementById('ag-addr').value,
+    phone:document.getElementById('ag-phone').value,
+    phone2:document.getElementById('ag-phone2').value,
+    email:document.getElementById('ag-email').value,
+    web:document.getElementById('ag-web').value,
+    city:document.getElementById('ag-city').value,
+    bp:document.getElementById('ag-bp').value,
+    footer:document.getElementById('ag-footer').value,
+  };
+  alert('✓ Informations de l\'agence enregistrées.\nElles apparaîtront dans tous les rapports PDF.');
+}
+function renderSettingsUsers(){
+  const el=document.getElementById('users-list');if(!el)return;
+  const roleColors={Administrateur:'badge-danger',Directeur:'badge-danger',Superviseur:'badge-warn',Caissier:'badge-info',Comptable:'badge-info',Agent:'badge-gray'};
+  el.innerHTML=`
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding-top:8px">
+    ${Object.entries(USERS).map(([u,d])=>`
+      <div style="background:var(--surface1);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:54px;height:54px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--blue-l);background:var(--blue-l);display:flex;align-items:center;justify-content:center">
+            ${d.photo?`<img src="${d.photo}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:18px;font-weight:700;color:var(--blue-d)">${d.initials}</span>`}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
+            <span class="badge ${roleColors[d.role]||'badge-gray'}" style="margin-top:3px">${d.role}</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);display:flex;flex-direction:column;gap:3px">
+          <div><i class="ti ti-user" style="font-size:12px"></i> Login : <strong>${u}</strong></div>
+          ${d.email?`<div><i class="ti ti-mail" style="font-size:12px"></i> ${d.email}</div>`:''}
+          ${d.phone?`<div><i class="ti ti-phone" style="font-size:12px"></i> ${d.phone}</div>`:''}
+          <div><i class="ti ti-shield" style="font-size:12px"></i> Accès : ${d.access}</div>
+        </div>
+        <button class="btn btn-sm" style="width:100%;justify-content:center" onclick="openEditUser('${u}')">
+          <i class="ti ti-edit"></i>Modifier ce compte
+        </button>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+let _editingUserPhoto='';
+
+function openAddUser(){
+  _editingUserPhoto='';
+  document.getElementById('mu-title').textContent='Ajouter un utilisateur';
+  document.getElementById('mu-username').value='__new__';
+  document.getElementById('mu-name').value='';
+  document.getElementById('mu-role').value='Caissier';
+  document.getElementById('mu-email').value='';
+  document.getElementById('mu-phone').value='';
+  document.getElementById('mu-access').value='transfers';
+  document.getElementById('mu-login').value='';
+  document.getElementById('mu-login').removeAttribute('readonly');
+  document.getElementById('mu-pass').value='';
+  document.getElementById('mu-pass2').value='';
+  document.getElementById('mu-pass-error').style.display='none';
+  document.getElementById('mu-photo-img').style.display='none';
+  document.getElementById('mu-photo-img').src='';
+  document.getElementById('mu-photo-initials').textContent='??';
+  document.getElementById('mu-photo-initials').style.display='flex';
+  document.getElementById('mu-display-name').textContent='Nouvel utilisateur';
+  document.getElementById('mu-display-role').textContent='';
+  document.getElementById('mu-delete-btn').style.display='none';
+  openModal('modal-user');
+}
+
+function openEditUser(username){
+  const d=USERS[username];if(!d)return;
+  _editingUserPhoto=d.photo||'';
+  document.getElementById('mu-title').textContent='Modifier — '+d.name;
+  document.getElementById('mu-username').value=username;
+  document.getElementById('mu-name').value=d.name;
+  document.getElementById('mu-role').value=d.role;
+  document.getElementById('mu-email').value=d.email||'';
+  document.getElementById('mu-phone').value=d.phone||'';
+  document.getElementById('mu-access').value=d.access||'all';
+  document.getElementById('mu-login').value=username;
+  document.getElementById('mu-login').setAttribute('readonly','true');
+  document.getElementById('mu-pass').value='';
+  document.getElementById('mu-pass2').value='';
+  document.getElementById('mu-pass-error').style.display='none';
+  // Photo
+  if(d.photo){
+    document.getElementById('mu-photo-img').src=d.photo;
+    document.getElementById('mu-photo-img').style.display='block';
+    document.getElementById('mu-photo-initials').style.display='none';
+  }else{
+    document.getElementById('mu-photo-img').style.display='none';
+    document.getElementById('mu-photo-img').src='';
+    document.getElementById('mu-photo-initials').style.display='flex';
+    document.getElementById('mu-photo-initials').textContent=d.initials;
+  }
+  document.getElementById('mu-display-name').textContent=d.name;
+  document.getElementById('mu-display-role').textContent=d.role;
+  // Empêcher la suppression du compte connecté
+  const isCurrentUser=S.currentUser&&S.currentUser.username===username;
+  document.getElementById('mu-delete-btn').style.display=isCurrentUser?'none':'inline-flex';
+  openModal('modal-user');
+}
+
+function updateUserPreview(){
+  const name=document.getElementById('mu-name').value||'Nouveau';
+  const role=document.getElementById('mu-role').value||'';
+  document.getElementById('mu-display-name').textContent=name;
+  document.getElementById('mu-display-role').textContent=role;
+  // Mettre à jour les initiales si pas de photo
+  if(!_editingUserPhoto){
+    const parts=name.trim().split(/\s+/);
+    const ini=(parts[0]?parts[0][0]:'?')+(parts[1]?parts[1][0]:'');
+    document.getElementById('mu-photo-initials').textContent=ini.toUpperCase()||'??';
+  }
+}
+
+function loadUserPhoto(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    _editingUserPhoto=e.target.result;
+    document.getElementById('mu-photo-img').src=e.target.result;
+    document.getElementById('mu-photo-img').style.display='block';
+    document.getElementById('mu-photo-initials').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeUserPhoto(){
+  _editingUserPhoto='';
+  document.getElementById('mu-photo-img').src='';
+  document.getElementById('mu-photo-img').style.display='none';
+  document.getElementById('mu-photo-initials').style.display='flex';
+  document.getElementById('mu-photo-file').value='';
+  // Remettre les initiales
+  const name=document.getElementById('mu-name').value||'??';
+  const parts=name.trim().split(/\s+/);
+  document.getElementById('mu-photo-initials').textContent=((parts[0]?parts[0][0]:'')+(parts[1]?parts[1][0]:'')).toUpperCase()||'??';
+}
+
+function toggleMuPw(){
+  const inp=document.getElementById('mu-pass');
+  const ico=document.getElementById('mu-eye');
+  inp.type=inp.type==='password'?'text':'password';
+  ico.className=inp.type==='password'?'ti ti-eye':'ti ti-eye-off';
+}
+
+function saveUser(){
+  const username=document.getElementById('mu-username').value;
+  const isNew=username==='__new__';
+  const login=isNew?document.getElementById('mu-login').value.trim().toLowerCase():username;
+  const name=document.getElementById('mu-name').value.trim();
+  const role=document.getElementById('mu-role').value;
+  const pass=document.getElementById('mu-pass').value;
+  const pass2=document.getElementById('mu-pass2').value;
+
+  if(!name){alert('Le nom est obligatoire.');return;}
+  if(isNew&&!login){alert('L\'identifiant de connexion est obligatoire.');return;}
+  if(isNew&&USERS[login]){alert('Cet identifiant existe déjà. Choisissez-en un autre.');return;}
+  if(pass&&pass!==pass2){
+    document.getElementById('mu-pass-error').style.display='block';return;
+  }
+  document.getElementById('mu-pass-error').style.display='none';
+  if(isNew&&!pass){alert('Un mot de passe est obligatoire pour le nouvel utilisateur.');return;}
+
+  const parts=name.split(/\s+/);
+  const initials=((parts[0]?parts[0][0]:'')+(parts[1]?parts[1][0]:'')).toUpperCase()||'??';
+
+  const entry={
+    ...(isNew?{}:USERS[username]),
+    name,role,
+    initials,
+    email:document.getElementById('mu-email').value.trim(),
+    phone:document.getElementById('mu-phone').value.trim(),
+    access:document.getElementById('mu-access').value,
+    photo:_editingUserPhoto||'',
+    pass:pass||(isNew?'':USERS[username].pass)
+  };
+
+  if(isNew){USERS[login]=entry;}
+  else{Object.assign(USERS[username],entry);}
+
+  // Mettre à jour la barre latérale si c'est le compte connecté
+  if(S.currentUser&&S.currentUser.username===username){
+    S.currentUser={...S.currentUser,...entry,username};
+    document.getElementById('sb-uname').textContent=entry.name;
+    document.getElementById('sb-role').textContent=entry.role;
+    const av=document.getElementById('sb-avatar');
+    if(entry.photo){
+      av.innerHTML=`<img src="${entry.photo}" style="width:34px;height:34px;border-radius:50%;object-fit:cover">`;
+    }else{
+      av.innerHTML=initials;
+      av.style.background='var(--blue-l)';av.style.color='var(--blue-d)';
+    }
+  }
+
+  closeModal('modal-user');
+  renderSettingsUsers();
+}
+
+function deleteUser(){
+  const username=document.getElementById('mu-username').value;
+  if(!username||username==='__new__')return;
+  if(S.currentUser&&S.currentUser.username===username){alert('Impossible de supprimer le compte actuellement connecté.');return;}
+  if(!confirm('Supprimer le compte "'+username+'" ('+USERS[username].name+') ?\nCette action est irréversible.'))return;
+  delete USERS[username];
+  closeModal('modal-user');
+  renderSettingsUsers();
+}
+
+// ════════════ MODALS ════════════
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});});
+</script>
+</body>
+</html>
